@@ -1,0 +1,178 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "LaunchIntent",
+          "samples": [
+            "abre doctor de errores",
+            "inicia doctor de errores",
+            "quiero diagnosticar un error",
+            "ayúdame con un error"
+          ]
+        },
+        {
+          "slots": [
+            {
+              "name": "errorText",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "name": "DiagnoseIntent",
+          "samples": [
+            "tengo un error {errorText}",
+            "diagnostica {errorText}",
+            "me está fallando {errorText}",
+            "tengo problema con {errorText}",
+            "ayúdame a resolver {errorText}"
+          ]
+        },
+        {
+          "name": "MoreIntent",
+          "samples": [
+            "dame otra opción",
+            "muéstrame más soluciones",
+            "siguiente paso",
+            "quiero más detalles"
+          ]
+        },
+        {
+          "name": "WhyIntent",
+          "samples": [
+            "por qué pasa esto",
+            "explícame la causa",
+            "por qué sucede esto",
+            "dime la razón"
+          ]
+        },
+        {
+          "name": "SendCardIntent",
+          "samples": [
+            "envíalo a mi teléfono",
+            "mándalo a la app",
+            "envíame el resumen",
+            "mándame los pasos"
+          ]
+        },
+        {
+          "slots": [
+            {
+              "name": "so",
+              "type": "SOType"
+            },
+            {
+              "name": "pm",
+              "type": "PackageManagerType"
+            },
+            {
+              "name": "editor",
+              "type": "EditorType"
+            }
+          ],
+          "name": "SetProfileIntent",
+          "samples": [
+            "uso {so} y {pm}",
+            "cámbialo a {pm}",
+            "uso {editor} en {so}"
+          ]
+        },
+        {
+          "name": "RepeatIntent",
+          "samples": [
+            "repite",
+            "vuelve a decirlo",
+            "repítelo otra vez"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "values": [
+            {
+              "name": {
+                "value": "Windows"
+              }
+            },
+            {
+              "name": {
+                "value": "macOS"
+              }
+            },
+            {
+              "name": {
+                "value": "Linux"
+              }
+            },
+            {
+              "name": {
+                "value": "WSL"
+              }
+            }
+          ],
+          "name": "SOType"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "pip"
+              }
+            },
+            {
+              "name": {
+                "value": "conda"
+              }
+            },
+            {
+              "name": {
+                "value": "poetry"
+              }
+            }
+          ],
+          "name": "PackageManagerType"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "VSCode"
+              }
+            },
+            {
+              "name": {
+                "value": "PyCharm"
+              }
+            },
+            {
+              "name": {
+                "value": "Jupyter"
+              }
+            }
+          ],
+          "name": "EditorType"
+        }
+      ],
+      "invocationName": "doctor de errores"
+    }
+  }
+}

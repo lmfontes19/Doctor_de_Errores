@@ -180,7 +180,8 @@ class SendCardIntentHandler(BaseIntentHandler):
 
         # Agregar informacion del perfil
         sections.append(f"Sistema operativo: {user_profile.os.value}")
-        sections.append(f"Gestor de paquetes: {user_profile.package_manager.value}")
+        sections.append(
+            f"Gestor de paquetes: {user_profile.package_manager.value}")
         sections.append(f"Editor: {user_profile.editor.value}")
 
         # Timestamp

@@ -16,12 +16,14 @@ from typing import Optional
 # ============================================================================
 
 # Entorno de ejecucion
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')  # development, staging, production
+# development, staging, production
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 IS_PRODUCTION = ENVIRONMENT == 'production'
 IS_DEVELOPMENT = ENVIRONMENT == 'development'
 
 # Logging
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+# DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 
 # ============================================================================
@@ -110,10 +112,12 @@ DEFAULT_EDITOR = 'vscode'
 # ============================================================================
 
 # Features flags
-ENABLE_AI_DIAGNOSTICS = os.getenv('ENABLE_AI_DIAGNOSTICS', 'true').lower() == 'true'
+ENABLE_AI_DIAGNOSTICS = os.getenv(
+    'ENABLE_AI_DIAGNOSTICS', 'true').lower() == 'true'
 ENABLE_STORAGE = os.getenv('ENABLE_STORAGE', 'true').lower() == 'true'
 ENABLE_METRICS = os.getenv('ENABLE_METRICS', 'true').lower() == 'true'
-ENABLE_DETAILED_LOGS = os.getenv('ENABLE_DETAILED_LOGS', 'false').lower() == 'true'
+ENABLE_DETAILED_LOGS = os.getenv(
+    'ENABLE_DETAILED_LOGS', 'false').lower() == 'true'
 
 
 # ============================================================================
@@ -138,10 +142,10 @@ if IS_DEVELOPMENT:
     # En desarrollo, usar logs más verbosos
     LOG_LEVEL = 'DEBUG'
     ENABLE_DETAILED_LOGS = True
-    
+
     # Usar mock AI por defecto en desarrollo
     AI_PROVIDER = os.getenv('AI_PROVIDER', 'mock')
-    
+
     # DynamoDB local si está configurado
     if not DYNAMODB_ENDPOINT:
         DYNAMODB_ENDPOINT = 'http://localhost:8000'
@@ -154,30 +158,30 @@ if IS_DEVELOPMENT:
 def validate_config() -> bool:
     """
     Valida que la configuracion sea correcta.
-    
+
     Returns:
         True si la configuracion es valida
     """
     errors = []
-    
+
     # Validar AI provider
     if AI_PROVIDER not in ['bedrock', 'openai', 'mock']:
         errors.append(f"AI_PROVIDER invalido: {AI_PROVIDER}")
-    
+
     # Validar que KB templates existe
     if not os.path.exists(KB_TEMPLATES_PATH):
         errors.append(f"KB templates no encontrado: {KB_TEMPLATES_PATH}")
-    
+
     # Validar OpenAI si esta configurado
     if AI_PROVIDER == 'openai' and not OPENAI_API_KEY:
         errors.append("OPENAI_API_KEY requerido cuando AI_PROVIDER=openai")
-    
+
     if errors:
         print("Errores de configuracion:")
         for error in errors:
             print(f"  - {error}")
         return False
-    
+
     return True
 
 
@@ -188,7 +192,7 @@ def validate_config() -> bool:
 def get_config_summary() -> dict:
     """
     Obtiene resumen de configuracion (para debugging).
-    
+
     Returns:
         Diccionario con configuracion actual
     """
@@ -209,11 +213,11 @@ def print_config():
     print("="*60)
     print("CONFIGURACION - DOCTOR DE ERRORES")
     print("="*60)
-    
+
     config = get_config_summary()
     for key, value in config.items():
         print(f"  {key}: {value}")
-    
+
     print("="*60)
 
 

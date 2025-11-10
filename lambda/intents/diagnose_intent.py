@@ -24,11 +24,10 @@ from ask_sdk_model import Response
 from intents.base import BaseIntentHandler, require_profile
 from models import Diagnostic, UserProfile, DiagnosticSource
 from utils import get_logger, truncate_text
-
-# Importaciones que se crearan despues
-# from services.kb_service import KnowledgeBaseService
-# from services.ai_client import AIClient
-# from core.response_builder import ResponseBuilder
+from core.response_builder import diagnostic_response
+from services.kb_service import kb_service
+from services.ai_client import ai_service
+from services.storage import storage_service
 
 
 class DiagnoseIntentHandler(BaseIntentHandler):
@@ -66,10 +65,10 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """Inicializa el handler con servicios."""
         super().__init__()
 
-        # Servicios (inicializar despues cuando esten creados)
-        # self.kb_service = KnowledgeBaseService()
-        # self.ai_client = AIClient()
-        # self.response_builder = ResponseBuilder()
+        # Servicios de busqueda y almacenamiento
+        self.kb_service = kb_service
+        self.ai_service = ai_service
+        self.storage_service = storage_service
 
         self.logger.info("DiagnoseIntentHandler initialized")
 
@@ -111,6 +110,13 @@ class DiagnoseIntentHandler(BaseIntentHandler):
 
         # Guardar en sesion para follow-ups
         self.save_last_diagnostic(handler_input, diagnostic)
+
+        # Guardar en historial persistente (mejor esfuerzo)
+        try:
+            user_id = handler_input.request_envelope.session.user.user_id
+            self.storage_service.save_diagnostic_history(user_id, diagnostic)
+        except Exception as e:
+            self.logger.warning(f"Failed to save diagnostic to history: {e}")
 
         # Construir respuesta
         return self._build_diagnostic_response(
@@ -165,8 +171,6 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         Busca el error en la Knowledge Base local.
 
-        TODO: Implementar cuando KnowledgeBaseService este listo.
-
         Args:
             error_text: Texto del error
             user_profile: Perfil del usuario
@@ -174,16 +178,24 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Returns:
             Diagnostico del KB o None si no hay match
         """
-        # Stub: Retornar un diagnostico de ejemplo
-        # En produccion, esto llamara a self.kb_service.search()
+        self.logger.debug("Searching in Knowledge Base")
 
-        self.logger.debug("Searching in Knowledge Base (stub)")
+        try:
+            # Buscar en KB usando el servicio
+            diagnostic = self.kb_service.search_diagnostic(
+                error_text, user_profile)
 
-        # Simulacion de KB search
-        # TODO: Reemplazar con: return self.kb_service.search(error_text, user_profile)
+            if diagnostic:
+                self.logger.info(
+                    f"KB match found: {diagnostic.error_type} "
+                    f"(confidence: {diagnostic.confidence:.2f})"
+                )
 
-        # Por ahora, retornar None para forzar AI fallback
-        return None
+            return diagnostic
+
+        except Exception as e:
+            self.logger.error(f"KB search failed: {e}", exc_info=True)
+            return None
 
     def _query_ai_service(
         self,
@@ -193,8 +205,6 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         Consulta el servicio de AI (Bedrock o OpenAI).
 
-        TODO: Implementar cuando AIClient este listo.
-
         Args:
             error_text: Texto del error
             user_profile: Perfil del usuario
@@ -202,40 +212,44 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Returns:
             Diagnostico generado por AI
         """
-        self.logger.debug("Querying AI service (stub)")
+        self.logger.debug("Querying AI service")
 
-        # Stub: Retornar un diagnostico de ejemplo
-        # En produccion: return self.ai_client.diagnose(error_text, user_profile)
+        try:
+            # Generar diagnostico usando AI service
+            diagnostic = self.ai_service.generate_diagnostic(
+                error_text, user_profile)
 
-        # Diagnostico de ejemplo para desarrollo
-        return Diagnostic(
-            error_type='ModuleNotFoundError',
-            voice_text=(
-                "Parece ser un error de modulo no encontrado. "
-                "Esto ocurre cuando Python no puede importar un paquete. "
-                "Instalalo con tu gestor de paquetes."
-            ),
-            card_title='Error: Modulo no encontrado',
-            card_text=(
-                f"**Diagnostico**: ModuleNotFoundError\n\n"
-                f"**Causa**: El paquete no esta instalado en tu entorno.\n\n"
-                f"**Solucion para {user_profile.os.value}**:\n"
-                f"1. Instala el paquete con: '{user_profile.package_manager.value} install <paquete>'\n"
-                f"2. Verifica que estes en el entorno virtual correcto\n"
-                f"3. Revisa el archivo requirements.txt\n\n"
-                f"**Mas ayuda**: Di 'por que pasa esto' para mas detalles."
-            ),
-            confidence=0.85,
-            source=DiagnosticSource.AI_SERVICE.value,
-            solutions=[
-                f"Ejecuta: {user_profile.package_manager.value} install <nombre_paquete>",
-                "Verifica que el entorno virtual este activado",
-                "Revisa requirements.txt y sincroniza dependencias"
-            ],
-            explanation=(
-                "Python busca modulos en sys.path. Si el paquete no esta "
-                "instalado o el entorno es incorrecto, lanza ModuleNotFoundError."
-            )
+            if diagnostic:
+                self.logger.info(
+                    f"AI diagnostic generated: {diagnostic.error_type} "
+                    f"(source: {diagnostic.source})"
+                )
+                return diagnostic
+            else:
+                # Fallback: diagnostico generico si AI falla
+                self.logger.warning("AI service returned None, using fallback")
+                return self._create_fallback_diagnostic(user_profile)
+
+        except Exception as e:
+            self.logger.error(f"AI service failed: {e}", exc_info=True)
+            return self._create_fallback_diagnostic(user_profile)
+
+    def _create_fallback_diagnostic(self, user_profile: UserProfile) -> Diagnostic:
+        """
+        Crea diagnostico fallback cuando KB y AI fallan.
+
+        Args:
+            user_profile: Perfil del usuario
+
+        Returns:
+            Diagnostico generico
+        """
+        from core.factories import DiagnosticFactory
+        from models import ErrorType
+
+        return DiagnosticFactory.create_error_diagnostic(
+            error_message="No se pudo diagnosticar el error especifico",
+            error_type=ErrorType.GENERIC_ERROR.value
         )
 
     def _build_diagnostic_response(

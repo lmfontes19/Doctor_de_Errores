@@ -1,0 +1,543 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Knowledge Base - Doctor de Errores",
+    "description": "Base de conocimiento local con patrones de errores comunes y sus soluciones",
+    "version": "0.1.0",
+    "errors": [
+        {
+            "id": "py_module_not_found",
+            "error_type": "ModuleNotFoundError",
+            "patterns": [
+                "module.*not found",
+                "no module named",
+                "cannot import.*module",
+                "importerror.*no module"
+            ],
+            "keywords": [
+                "import",
+                "module",
+                "package",
+                "not found"
+            ],
+            "severity": "medium",
+            "category": "dependencies",
+            "diagnosis": {
+                "title": "Error: Modulo no encontrado",
+                "short_description": "El paquete de Python que intentas importar no esta instalado en tu entorno.",
+                "voice_text": "Parece ser un error de modulo no encontrado. Esto ocurre cuando Python no puede importar un paquete porque no esta instalado. La solucion mas comun es instalarlo con tu gestor de paquetes.",
+                "explanation": "Python busca modulos en las rutas definidas en sys.path. Si el paquete no esta instalado en el entorno actual o la ruta no es correcta, Python lanza ModuleNotFoundError. Esto es muy comun cuando se trabaja con entornos virtuales.",
+                "common_causes": [
+                    "El paquete no esta instalado",
+                    "Estas en el entorno virtual incorrecto",
+                    "El nombre del paquete es diferente al nombre del modulo",
+                    "Falta sincronizar requirements.txt"
+                ]
+            },
+            "solutions": {
+                "linux": {
+                    "pip": [
+                        "Instala el paquete: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'which python' y 'pip list'",
+                        "Activa tu entorno virtual: 'source venv/bin/activate'",
+                        "Sincroniza dependencias: 'pip install -r requirements.txt'"
+                    ],
+                    "conda": [
+                        "Instala con conda: 'conda install <nombre_paquete>'",
+                        "O usa pip en conda: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'conda env list'",
+                        "Activa el entorno: 'conda activate <nombre_env>'"
+                    ],
+                    "poetry": [
+                        "Añade el paquete: 'poetry add <nombre_paquete>'",
+                        "Instala dependencias: 'poetry install'",
+                        "Entra al shell: 'poetry shell'"
+                    ]
+                },
+                "macos": {
+                    "pip": [
+                        "Instala el paquete: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'which python' y 'pip list'",
+                        "Activa tu entorno virtual: 'source venv/bin/activate'",
+                        "Sincroniza dependencias: 'pip install -r requirements.txt'"
+                    ],
+                    "conda": [
+                        "Instala con conda: 'conda install <nombre_paquete>'",
+                        "O usa pip en conda: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'conda env list'",
+                        "Activa el entorno: 'conda activate <nombre_env>'"
+                    ],
+                    "poetry": [
+                        "Añade el paquete: 'poetry add <nombre_paquete>'",
+                        "Instala dependencias: 'poetry install'",
+                        "Entra al shell: 'poetry shell'"
+                    ]
+                },
+                "windows": {
+                    "pip": [
+                        "Instala el paquete: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'where python' y 'pip list'",
+                        "Activa tu entorno virtual: '.\\venv\\Scripts\\activate'",
+                        "Sincroniza dependencias: 'pip install -r requirements.txt'"
+                    ],
+                    "conda": [
+                        "Instala con conda: 'conda install <nombre_paquete>'",
+                        "O usa pip en conda: 'pip install <nombre_paquete>'",
+                        "Verifica el entorno: 'conda env list'",
+                        "Activa el entorno: 'conda activate <nombre_env>'"
+                    ],
+                    "poetry": [
+                        "Añade el paquete: 'poetry add <nombre_paquete>'",
+                        "Instala dependencias: 'poetry install'",
+                        "Entra al shell: 'poetry shell'"
+                    ]
+                }
+            },
+            "related_errors": [
+                "py_import_error",
+                "py_syntax_error_import"
+            ],
+            "confidence_boost": 0.2,
+            "tags": [
+                "python",
+                "import",
+                "dependencies",
+                "environment"
+            ]
+        },
+        {
+            "id": "py_syntax_error",
+            "error_type": "SyntaxError",
+            "patterns": [
+                "syntaxerror",
+                "invalid syntax",
+                "unexpected indent",
+                "unexpected token"
+            ],
+            "keywords": [
+                "syntax",
+                "invalid",
+                "indent",
+                "token"
+            ],
+            "severity": "high",
+            "category": "syntax",
+            "diagnosis": {
+                "title": "Error de Sintaxis",
+                "short_description": "Tu codigo tiene un error de sintaxis que Python no puede interpretar.",
+                "voice_text": "Tienes un error de sintaxis en tu codigo. Esto significa que Python no puede entender lo que escribiste. Revisa parentesis, comillas, dos puntos, o la indentacion.",
+                "explanation": "Python es muy estricto con la sintaxis. Los errores mas comunes son: olvidar cerrar parentesis o comillas, falta de dos puntos despues de if/for/def, indentacion incorrecta, o usar palabras reservadas como nombres de variables.",
+                "common_causes": [
+                    "Parentesis, corchetes o llaves sin cerrar",
+                    "Comillas sin cerrar o mezcladas",
+                    "Falta de dos puntos despues de if, for, def, class",
+                    "Indentacion incorrecta o mezclada (tabs vs espacios)",
+                    "Uso de palabras reservadas como nombres",
+                    "Caracteres especiales no permitidos"
+                ]
+            },
+            "solutions": {
+                "linux": {
+                    "vscode": [
+                        "Revisa la linea que marca el error (el error puede estar en la linea anterior)",
+                        "Usa el linter de VSCode (Pylance) para ver errores en tiempo real",
+                        "Verifica que todos los parentesis y comillas esten cerrados",
+                        "Revisa la indentacion: usa solo espacios (4 espacios por nivel)",
+                        "Instala extension Python para mejor deteccion de errores"
+                    ],
+                    "pycharm": [
+                        "PyCharm marca errores de sintaxis automaticamente",
+                        "Revisa las lineas con subrayado rojo",
+                        "Usa Code > Reformat Code para corregir indentacion",
+                        "Verifica parentesis y comillas sin cerrar"
+                    ],
+                    "vim": [
+                        "Usa :set syntax=python para resaltar sintaxis",
+                        "Instala plugin como ALE o Syntastic",
+                        "Revisa parentesis con el comando %",
+                        "Verifica indentacion con :set list"
+                    ]
+                },
+                "macos": {
+                    "vscode": [
+                        "Revisa la linea que marca el error",
+                        "Usa el linter de VSCode (Pylance)",
+                        "Verifica parentesis y comillas",
+                        "Revisa la indentacion (4 espacios)",
+                        "Instala extension Python"
+                    ],
+                    "pycharm": [
+                        "PyCharm marca errores automaticamente",
+                        "Revisa lineas con subrayado rojo",
+                        "Usa Code > Reformat Code",
+                        "Verifica parentesis y comillas"
+                    ],
+                    "sublime": [
+                        "Instala paquete Python para sintaxis",
+                        "Usa Sublime Linter",
+                        "Revisa parentesis con Ctrl+M",
+                        "Verifica indentacion en View > Indentation"
+                    ]
+                },
+                "windows": {
+                    "vscode": [
+                        "Revisa la linea que marca el error",
+                        "Usa el linter de VSCode (Pylance)",
+                        "Verifica parentesis y comillas",
+                        "Revisa la indentacion (4 espacios)",
+                        "Instala extension Python"
+                    ],
+                    "pycharm": [
+                        "PyCharm marca errores automaticamente",
+                        "Revisa lineas con subrayado rojo",
+                        "Usa Code > Reformat Code",
+                        "Verifica parentesis y comillas"
+                    ],
+                    "notepad++": [
+                        "Instala plugin Python Indent",
+                        "Usa View > Show Symbol > Show All Characters",
+                        "Revisa parentesis manualmente",
+                        "Verifica que uses solo espacios, no tabs"
+                    ]
+                }
+            },
+            "related_errors": [
+                "py_indentation_error",
+                "py_name_error"
+            ],
+            "confidence_boost": 0.15,
+            "tags": [
+                "python",
+                "syntax",
+                "parsing",
+                "indentation"
+            ]
+        },
+        {
+            "id": "py_type_error",
+            "error_type": "TypeError",
+            "patterns": [
+                "typeerror",
+                "unsupported operand",
+                "object is not",
+                "takes.*positional argument"
+            ],
+            "keywords": [
+                "type",
+                "operand",
+                "argument",
+                "callable"
+            ],
+            "severity": "medium",
+            "category": "runtime",
+            "diagnosis": {
+                "title": "Error de Tipo",
+                "short_description": "Estas usando un valor de un tipo incorrecto para la operacion que intentas hacer.",
+                "voice_text": "Tienes un error de tipo. Esto pasa cuando intentas hacer una operacion con valores que no son compatibles. Por ejemplo, sumar un texto con un numero.",
+                "explanation": "Python tiene tipos dinamicos pero fuertes. No puedes, por ejemplo, sumar un string con un int directamente. Tambien ocurre cuando llamas a una funcion con el numero o tipo incorrecto de argumentos.",
+                "common_causes": [
+                    "Intentar operar con tipos incompatibles (ej: 'texto' + 5)",
+                    "Llamar a una funcion con argumentos incorrectos",
+                    "Intentar usar un string como funcion",
+                    "Acceder a un indice en algo que no es iterable",
+                    "Comparar None con otros valores sin verificar",
+                    "Olvidar convertir tipos (str a int, etc.)"
+                ]
+            },
+            "solutions": {
+                "linux": {
+                    "pip": [
+                        "Verifica los tipos de las variables: usa print(type(variable))",
+                        "Convierte tipos explicitamente: int(), str(), float(), list()",
+                        "Revisa la firma de la funcion que estas llamando",
+                        "Usa type hints para prevenir estos errores: def func(x: int) -> str:",
+                        "Usa herramientas como mypy para chequeo estatico de tipos"
+                    ],
+                    "conda": [
+                        "Usa print(type(variable)) para debug",
+                        "Convierte tipos: int(), str(), float()",
+                        "Instala mypy: conda install mypy",
+                        "Ejecuta: mypy tu_archivo.py"
+                    ],
+                    "poetry": [
+                        "Añade mypy: poetry add --group dev mypy",
+                        "Ejecuta: poetry run mypy .",
+                        "Usa type hints en tu codigo"
+                    ]
+                },
+                "macos": {
+                    "pip": [
+                        "Verifica tipos: print(type(variable))",
+                        "Convierte tipos: int(), str(), float()",
+                        "Revisa la firma de funciones",
+                        "Usa type hints",
+                        "Instala mypy: pip install mypy"
+                    ],
+                    "conda": [
+                        "Usa print(type(variable))",
+                        "Convierte tipos explicitamente",
+                        "Instala mypy: conda install mypy"
+                    ],
+                    "poetry": [
+                        "Añade mypy: poetry add --group dev mypy",
+                        "Ejecuta: poetry run mypy .",
+                        "Usa type hints"
+                    ]
+                },
+                "windows": {
+                    "pip": [
+                        "Verifica tipos: print(type(variable))",
+                        "Convierte tipos: int(), str(), float()",
+                        "Revisa la firma de funciones",
+                        "Usa type hints",
+                        "Instala mypy: pip install mypy"
+                    ],
+                    "conda": [
+                        "Usa print(type(variable))",
+                        "Convierte tipos explicitamente",
+                        "Instala mypy: conda install mypy"
+                    ],
+                    "poetry": [
+                        "Añade mypy: poetry add --group dev mypy",
+                        "Ejecuta: poetry run mypy .",
+                        "Usa type hints"
+                    ]
+                }
+            },
+            "related_errors": [
+                "py_attribute_error",
+                "py_value_error"
+            ],
+            "confidence_boost": 0.1,
+            "tags": [
+                "python",
+                "types",
+                "runtime",
+                "casting"
+            ]
+        },
+        {
+            "id": "py_indentation_error",
+            "error_type": "IndentationError",
+            "patterns": [
+                "indentationerror",
+                "unexpected indent",
+                "unindent does not match",
+                "expected an indented block"
+            ],
+            "keywords": [
+                "indentation",
+                "indent",
+                "unindent",
+                "block"
+            ],
+            "severity": "high",
+            "category": "syntax",
+            "diagnosis": {
+                "title": "Error de Indentacion",
+                "short_description": "La indentacion de tu codigo es incorrecta. Python usa espacios para definir bloques de codigo.",
+                "voice_text": "Tienes un error de indentacion. En Python, los espacios al inicio de las lineas son importantes porque definen que codigo va dentro de que bloque. Usa siempre cuatro espacios, no tabs.",
+                "explanation": "Python usa indentacion significativa en lugar de llaves. Cada nivel de bloque debe tener exactamente 4 espacios. No mezcles tabs y espacios. Despues de if, for, def, class, etc., el codigo siguiente debe estar indentado.",
+                "common_causes": [
+                    "Mezclar tabs y espacios",
+                    "Indentacion inconsistente (2 espacios, luego 4)",
+                    "Falta de indentacion despues de : (if, for, def, etc.)",
+                    "Copiar codigo con indentacion diferente",
+                    "Editor configurado incorrectamente"
+                ]
+            },
+            "solutions": {
+                "linux": {
+                    "vscode": [
+                        "Configura VSCode: Settings > Editor: Insert Spaces = true, Tab Size = 4",
+                        "Usa View > Show Whitespace para ver espacios y tabs",
+                        "Selecciona todo y usa Format Document (Shift+Alt+F)",
+                        "Instala extension Python con auto-formatting",
+                        "Verifica .editorconfig en tu proyecto"
+                    ],
+                    "pycharm": [
+                        "PyCharm detecta y marca errores de indentacion automaticamente",
+                        "Usa Code > Reformat Code (Ctrl+Alt+L) para corregir",
+                        "Settings > Editor > Code Style > Python > Tabs and Indents: 4 spaces",
+                        "Enable: Settings > Editor > Code Style > Detect and use existing file indents"
+                    ],
+                    "vim": [
+                        "Añade a .vimrc: set expandtab tabstop=4 shiftwidth=4 softtabstop=4",
+                        "Para Python: autocmd FileType python setlocal expandtab shiftwidth=4",
+                        "Usa :retab para convertir tabs a espacios",
+                        "Instala plugin python-mode para auto-formateo"
+                    ]
+                },
+                "macos": {
+                    "vscode": [
+                        "Settings > Editor: Insert Spaces = true, Tab Size = 4",
+                        "View > Show Whitespace",
+                        "Format Document (⇧⌥F)",
+                        "Instala extension Python"
+                    ],
+                    "pycharm": [
+                        "Code > Reformat Code (⌘⌥L)",
+                        "Settings > Editor > Code Style > Python: 4 spaces",
+                        "Enable: Detect and use existing file indents"
+                    ],
+                    "sublime": [
+                        "Preferences > Settings: 'translate_tabs_to_spaces': true, 'tab_size': 4",
+                        "View > Indentation > Convert Indentation to Spaces",
+                        "Instala SublimeLinter-pycodestyle"
+                    ]
+                },
+                "windows": {
+                    "vscode": [
+                        "Settings > Editor: Insert Spaces = true, Tab Size = 4",
+                        "View > Show Whitespace",
+                        "Format Document (Shift+Alt+F)",
+                        "Instala extension Python"
+                    ],
+                    "pycharm": [
+                        "Code > Reformat Code (Ctrl+Alt+L)",
+                        "Settings > Editor > Code Style > Python: 4 spaces",
+                        "Enable: Detect and use existing file indents"
+                    ],
+                    "notepad++": [
+                        "Settings > Preferences > Language > Tab Settings > Replace by space",
+                        "Set Tab size: 4",
+                        "Plugins > Plugin Manager > Python Indent",
+                        "Edit > Blank Operations > TAB to Space"
+                    ]
+                }
+            },
+            "related_errors": [
+                "py_syntax_error"
+            ],
+            "confidence_boost": 0.25,
+            "tags": [
+                "python",
+                "indentation",
+                "whitespace",
+                "syntax"
+            ]
+        },
+        {
+            "id": "py_name_error",
+            "error_type": "NameError",
+            "patterns": [
+                "nameerror",
+                "name.*is not defined",
+                "undefined variable"
+            ],
+            "keywords": [
+                "name",
+                "not defined",
+                "undefined",
+                "variable"
+            ],
+            "severity": "medium",
+            "category": "runtime",
+            "diagnosis": {
+                "title": "Error: Nombre no definido",
+                "short_description": "Estas intentando usar una variable o funcion que no existe o no ha sido definida todavia.",
+                "voice_text": "Tienes un error de nombre no definido. Esto pasa cuando usas una variable o funcion que Python no conoce. Puede ser un typo, o que olvidaste definirla antes de usarla.",
+                "explanation": "Python ejecuta el codigo linea por linea. Si usas una variable antes de asignarle un valor, o si tienes un error tipografico en el nombre, Python lanza NameError. Tambien ocurre si olvidaste importar un modulo.",
+                "common_causes": [
+                    "Typo en el nombre de la variable o funcion",
+                    "Usar una variable antes de definirla",
+                    "Error en el scope (variable definida en otra funcion)",
+                    "Olvidar importar un modulo",
+                    "Mayusculas/minusculas incorrectas (Python es case-sensitive)"
+                ]
+            },
+            "solutions": {
+                "linux": {
+                    "pip": [
+                        "Verifica el nombre exacto de la variable (case-sensitive)",
+                        "Asegurate de que la variable este definida antes de usarla",
+                        "Si es una funcion de un modulo, importala: from modulo import funcion",
+                        "Revisa el scope: variables locales no existen fuera de funciones",
+                        "Usa un linter (pylint, flake8) para detectar estos errores"
+                    ],
+                    "conda": [
+                        "Verifica nombres exactos",
+                        "Define variables antes de usarlas",
+                        "Importa modulos necesarios",
+                        "Instala linter: conda install pylint"
+                    ],
+                    "poetry": [
+                        "Verifica nombres y typos",
+                        "Añade linter: poetry add --group dev pylint",
+                        "Ejecuta: poetry run pylint tu_archivo.py"
+                    ]
+                },
+                "macos": {
+                    "pip": [
+                        "Verifica el nombre exacto (case-sensitive)",
+                        "Define variables antes de usarlas",
+                        "Importa modulos necesarios",
+                        "Revisa el scope",
+                        "Usa linter: pip install pylint"
+                    ],
+                    "conda": [
+                        "Verifica nombres exactos",
+                        "Define antes de usar",
+                        "Instala linter: conda install pylint"
+                    ],
+                    "poetry": [
+                        "Añade linter: poetry add --group dev pylint",
+                        "Ejecuta: poetry run pylint ."
+                    ]
+                },
+                "windows": {
+                    "pip": [
+                        "Verifica el nombre exacto (case-sensitive)",
+                        "Define variables antes de usarlas",
+                        "Importa modulos necesarios",
+                        "Revisa el scope",
+                        "Usa linter: pip install pylint"
+                    ],
+                    "conda": [
+                        "Verifica nombres exactos",
+                        "Define antes de usar",
+                        "Instala linter: conda install pylint"
+                    ],
+                    "poetry": [
+                        "Añade linter: poetry add --group dev pylint",
+                        "Ejecuta: poetry run pylint ."
+                    ]
+                }
+            },
+            "related_errors": [
+                "py_attribute_error",
+                "py_import_error"
+            ],
+            "confidence_boost": 0.15,
+            "tags": [
+                "python",
+                "variables",
+                "scope",
+                "runtime"
+            ]
+        }
+    ],
+    "metadata": {
+        "last_updated": "2025-11-08",
+        "total_errors": 5,
+        "supported_languages": [
+            "python"
+        ],
+        "supported_os": [
+            "linux",
+            "macos",
+            "windows"
+        ],
+        "supported_package_managers": [
+            "pip",
+            "conda",
+            "poetry"
+        ],
+        "supported_editors": [
+            "vscode",
+            "pycharm",
+            "vim",
+            "sublime",
+            "notepad++"
+        ]
+    }
+}

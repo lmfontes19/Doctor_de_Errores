@@ -21,10 +21,12 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 from ask_sdk_core.utils import is_intent_name, get_slot_value
 
+# Importaciones de modelos
+from models import UserProfile, Diagnostic, SessionState
+
 # Importaciones locales (se crearán despues)
 # from core.response_builder import ResponseBuilder
 # from services.storage import StorageService
-# from models import UserProfile
 
 
 # ============================================================================
@@ -264,7 +266,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
     # Metodos de Utilidad para Perfil de Usuario
     # ========================================================================
 
-    def get_user_profile(self, handler_input: HandlerInput) -> Optional[Dict[str, Any]]:
+    def get_user_profile(self, handler_input: HandlerInput) -> UserProfile:
         """
         Obtiene el perfil del usuario desde session attributes o storage.
 
@@ -275,23 +277,25 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
             handler_input: Input del request
 
         Returns:
-            Optional[Dict[str, Any]]: Perfil del usuario o None
+            UserProfile: Perfil del usuario (nunca None, usa default si no existe)
         """
         # Intentar obtener de session attributes (cache)
-        profile = self.get_session_attribute(handler_input, 'user_profile')
+        profile_dict = self.get_session_attribute(
+            handler_input, 'user_profile')
 
-        if profile:
+        if profile_dict:
             self.logger.info("Profile loaded from session cache")
-            return profile
+            return UserProfile.from_dict(profile_dict)
 
         # TODO: Implementar carga desde DynamoDB cuando StorageService este listo
         # user_id = self.get_user_id(handler_input)
         # storage_service = StorageService()
-        # profile = storage_service.get_profile(user_id)
+        # profile_dict = storage_service.get_profile(user_id)
         #
-        # if profile:
+        # if profile_dict:
+        #     profile = UserProfile.from_dict(profile_dict)
         #     # Cachear en session
-        #     self.set_session_attribute(handler_input, 'user_profile', profile)
+        #     self.set_session_attribute(handler_input, 'user_profile', profile.to_dict())
         #     return profile
 
         # Retornar perfil por defecto
@@ -301,7 +305,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
     def save_user_profile(
         self,
         handler_input: HandlerInput,
-        profile: Dict[str, Any]
+        profile: UserProfile
     ) -> None:
         """
         Guarda el perfil del usuario en session y storage.
@@ -311,33 +315,30 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
             profile: Perfil a guardar
         """
         # Guardar en session (cache)
-        self.set_session_attribute(handler_input, 'user_profile', profile)
+        self.set_session_attribute(
+            handler_input, 'user_profile', profile.to_dict())
 
         # TODO: Guardar en DynamoDB cuando StorageService este listo
         # user_id = self.get_user_id(handler_input)
         # storage_service = StorageService()
-        # storage_service.save_profile(user_id, profile)
+        # storage_service.save_profile(user_id, profile.to_dict())
 
         self.logger.info("Profile saved successfully")
 
-    def _get_default_profile(self) -> Dict[str, Any]:
+    def _get_default_profile(self) -> UserProfile:
         """
         Retorna un perfil por defecto.
 
         Returns:
-            Dict[str, Any]: Perfil por defecto
+            UserProfile: Perfil por defecto
         """
-        return {
-            'os': 'Windows',
-            'package_manager': 'pip',
-            'editor': 'VSCode'
-        }
+        return UserProfile()  # Usa defaults: linux, pip, vscode
 
     # ========================================================================
     # Metodos de Utilidad para Contexto de Diagnostico
     # ========================================================================
 
-    def get_last_diagnostic(self, handler_input: HandlerInput) -> Optional[Dict[str, Any]]:
+    def get_last_diagnostic(self, handler_input: HandlerInput) -> Optional[Diagnostic]:
         """
         Obtiene el ultimo diagnostico de la sesion.
 
@@ -348,14 +349,18 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
             handler_input: Input del request
 
         Returns:
-            Optional[Dict[str, Any]]: ultimo diagnostico o None
+            Optional[Diagnostic]: ultimo diagnostico o None
         """
-        return self.get_session_attribute(handler_input, 'last_diagnostic')
+        diagnostic_dict = self.get_session_attribute(
+            handler_input, 'last_diagnostic')
+        if diagnostic_dict:
+            return Diagnostic.from_dict(diagnostic_dict)
+        return None
 
     def save_last_diagnostic(
         self,
         handler_input: HandlerInput,
-        diagnostic: Dict[str, Any]
+        diagnostic: Diagnostic
     ) -> None:
         """
         Guarda el diagnostico actual para referencia futura.
@@ -365,7 +370,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
             diagnostic: Diagnostico a guardar
         """
         self.set_session_attribute(
-            handler_input, 'last_diagnostic', diagnostic)
+            handler_input, 'last_diagnostic', diagnostic.to_dict())
 
     # ========================================================================
     # Metodos de Logging
@@ -549,14 +554,14 @@ class SessionHelper:
         max_items: int = 5
     ) -> None:
         """
-        Añade un item al historial en session attributes.
+        Anhade un item al historial en session attributes.
 
         Mantiene solo los ultimos max_items items.
 
         Args:
             handler_input: Input del request
             history_key: Clave del historial
-            item: Item a añadir
+            item: Item a anhadir
             max_items: Numero máximo de items a mantener
         """
         session_attr = handler_input.attributes_manager.session_attributes

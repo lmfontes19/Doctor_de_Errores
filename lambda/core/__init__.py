@@ -8,14 +8,14 @@ Este paquete contiene:
 - Prototype registry para templates
 """
 
-from core.factories import (
+from .factories import (
     DiagnosticFactory,
     UserProfileFactory,
     ResponseFactory,
     SessionStateFactory
 )
 
-from core.response_builder import (
+from .response_builder import (
     AlexaResponseBuilder,
     DiagnosticResponseBuilder,
     ProfileResponseBuilder,
@@ -24,7 +24,7 @@ from core.response_builder import (
     profile_response
 )
 
-from core.prototype import (
+from .prototype import (
     DiagnosticPrototype,
     UserProfilePrototype,
     PrototypeRegistry,
@@ -33,7 +33,7 @@ from core.prototype import (
     get_profile_template
 )
 
-from core.interceptors import (
+from .interceptors import (
     RECOMMENDED_REQUEST_INTERCEPTORS,
     RECOMMENDED_RESPONSE_INTERCEPTORS
 )

@@ -7,14 +7,14 @@ Este paquete contiene servicios de:
 - Storage: Persistencia en DynamoDB
 """
 
-from services.kb_service import (
+from .kb_service import (
     KnowledgeBaseService,
     kb_service,
     search_diagnostic,
     get_kb_statistics
 )
 
-from services.ai_client import (
+from .ai_client import (
     AIService,
     BedrockAIClient,
     OpenAIClient,
@@ -26,7 +26,7 @@ from services.ai_client import (
     AIProviderUnavailable
 )
 
-from services.storage import (
+from .storage import (
     StorageService,
     storage_service,
     save_user_profile,

@@ -1,2 +1,9 @@
-boto3==1.28.78
+# Alexa Skills Kit SDK
 ask-sdk-core==1.19.0
+ask-sdk-model==1.88.0
+
+# AWS Services
+boto3==1.28.78
+
+# Optional: OpenAI (si quieres usar OpenAI en vez de solo Bedrock)
+# openai==1.3.0

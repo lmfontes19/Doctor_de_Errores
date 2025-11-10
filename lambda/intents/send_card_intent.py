@@ -17,12 +17,12 @@ Patterns:
 - Builder (construccion de card compleja)
 """
 
-from typing import Dict, Any
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 from ask_sdk_model.ui import StandardCard, Image
 
 from intents.base import BaseIntentHandler
+from models import Diagnostic, UserProfile
 from utils import get_logger, format_timestamp
 from datetime import datetime
 
@@ -80,28 +80,19 @@ class SendCardIntentHandler(BaseIntentHandler):
             Response: Respuesta con card detallada y confirmacion verbal
         """
         # Verificar que exista un diagnostico previo
-        last_diagnostic = self.get_session_attribute(
-            handler_input,
-            'last_diagnostic'
-        )
+        last_diagnostic = self.get_last_diagnostic(handler_input)
 
         if not last_diagnostic:
             return self._handle_no_diagnostic(handler_input)
 
-        # Obtener perfil de usuario (opcional)
-        user_profile = self.get_session_attribute(
-            handler_input,
-            'user_profile',
-            default={}
-        )
-
-        error_type = last_diagnostic.get('error_type', 'Error')
+        # Obtener perfil de usuario
+        user_profile = self.get_user_profile(handler_input)
 
         self.logger.info(
             f"Sending card to app",
             extra={
-                'error_type': error_type,
-                'has_solutions': len(last_diagnostic.get('solutions', [])) > 0
+                'error_type': last_diagnostic.error_type,
+                'has_solutions': last_diagnostic.has_solutions()
             }
         )
 
@@ -124,8 +115,8 @@ class SendCardIntentHandler(BaseIntentHandler):
 
     def _build_detailed_card(
         self,
-        diagnostic: Dict[str, Any],
-        user_profile: Dict[str, Any]
+        diagnostic: Diagnostic,
+        user_profile: UserProfile
     ) -> tuple:
         """
         Construye una card detallada con toda la informacion del diagnostico.
@@ -137,9 +128,9 @@ class SendCardIntentHandler(BaseIntentHandler):
         Returns:
             tuple: (card_title, card_content)
         """
-        error_type = diagnostic.get('error_type', 'Error')
-        confidence = diagnostic.get('confidence', 0.0)
-        source = diagnostic.get('source', 'unknown')
+        error_type = diagnostic.error_type
+        confidence = diagnostic.confidence
+        source = diagnostic.source
 
         # Construir titulo
         card_title = f"Doctor de Errores: {error_type}"
@@ -154,31 +145,29 @@ class SendCardIntentHandler(BaseIntentHandler):
         sections.append("")
 
         # Seccion 2: Descripcion breve
-        if diagnostic.get('voice_text'):
+        if diagnostic.voice_text:
             sections.append("DESCRIPCION:")
-            sections.append(diagnostic['voice_text'])
+            sections.append(diagnostic.voice_text)
             sections.append("")
 
         # Seccion 3: Todas las soluciones
-        solutions = diagnostic.get('solutions', [])
-        if solutions:
+        if diagnostic.has_solutions():
             sections.append("-" * 50)
             sections.append("SOLUCIONES:")
             sections.append("-" * 50)
             sections.append("")
 
-            for i, solution in enumerate(solutions, 1):
+            for i, solution in enumerate(diagnostic.solutions, 1):
                 sections.append(f"{i}. {solution}")
                 sections.append("")
 
         # Seccion 4: Explicacion tecnica
-        explanation = diagnostic.get('explanation')
-        if explanation:
+        if diagnostic.has_explanation():
             sections.append("-" * 50)
             sections.append("POR QUE OCURRE:")
             sections.append("-" * 50)
             sections.append("")
-            sections.append(explanation)
+            sections.append(diagnostic.explanation)
             sections.append("")
 
         # Seccion 5: Informacion adicional
@@ -189,15 +178,10 @@ class SendCardIntentHandler(BaseIntentHandler):
         sections.append(f"Confianza del diagnostico: {confidence * 100:.0f}%")
         sections.append(f"Fuente: {source.upper()}")
 
-        # Agregar informacion del perfil si esta disponible
-        if user_profile:
-            os_info = user_profile.get('os', 'N/A')
-            pm_info = user_profile.get('pm', 'N/A')
-            editor_info = user_profile.get('editor', 'N/A')
-
-            sections.append(f"Sistema operativo: {os_info}")
-            sections.append(f"Gestor de paquetes: {pm_info}")
-            sections.append(f"Editor: {editor_info}")
+        # Agregar informacion del perfil
+        sections.append(f"Sistema operativo: {user_profile.os.value}")
+        sections.append(f"Gestor de paquetes: {user_profile.package_manager.value}")
+        sections.append(f"Editor: {user_profile.editor.value}")
 
         # Timestamp
         sections.append(f"Fecha: {format_timestamp()}")
@@ -222,7 +206,7 @@ class SendCardIntentHandler(BaseIntentHandler):
 
         return card_title, card_content
 
-    def _build_voice_confirmation(self, diagnostic: Dict[str, Any]) -> str:
+    def _build_voice_confirmation(self, diagnostic: Diagnostic) -> str:
         """
         Construye el mensaje de voz confirmando el envio.
 
@@ -232,8 +216,8 @@ class SendCardIntentHandler(BaseIntentHandler):
         Returns:
             str: Mensaje de confirmacion
         """
-        error_type = diagnostic.get('error_type', 'el error')
-        num_solutions = len(diagnostic.get('solutions', []))
+        error_type = diagnostic.error_type
+        num_solutions = diagnostic.get_solution_count()
 
         if num_solutions > 0:
             speak_output = (

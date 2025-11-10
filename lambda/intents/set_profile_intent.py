@@ -220,41 +220,6 @@ class SetProfileIntentHandler(BaseIntentHandler):
         )
         return value_lower
 
-    def _build_updated_profile(
-        self,
-        current_profile: Dict[str, str],
-        so_value: Optional[str],
-        pm_value: Optional[str],
-        editor_value: Optional[str]
-    ) -> Dict[str, str]:
-        """
-        Construye el perfil actualizado haciendo merge con el actual.
-
-        Solo actualiza los campos que fueron proporcionados, mantiene
-        los valores actuales para los demas.
-
-        Args:
-            current_profile: Perfil actual
-            so_value: Nuevo OS (opcional)
-            pm_value: Nuevo PM (opcional)
-            editor_value: Nuevo editor (opcional)
-
-        Returns:
-            Perfil actualizado
-        """
-        new_profile = current_profile.copy()
-
-        if so_value:
-            new_profile['os'] = so_value
-
-        if pm_value:
-            new_profile['pm'] = pm_value
-
-        if editor_value:
-            new_profile['editor'] = editor_value
-
-        return new_profile
-
     def _get_changed_fields(
         self,
         old_profile: UserProfile,
@@ -321,7 +286,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
             changes = []
             for field in changed_fields:
                 field_name = self._get_field_name(field)
-                new_val = new_profile.get(field, 'desconocido')
+                new_val = self._get_field_value(new_profile, field)
                 changes.append(f"{field_name} a {new_val}")
 
             changes_text = ", ".join(changes[:-1]) + f" y {changes[-1]}"
@@ -365,9 +330,28 @@ class SetProfileIntentHandler(BaseIntentHandler):
         }
         return names.get(field, field)
 
+    def _get_field_value(self, profile: UserProfile, field: str) -> str:
+        """
+        Obtiene el valor de un campo del perfil.
+
+        Args:
+            profile: UserProfile
+            field: Nombre del campo
+
+        Returns:
+            Valor del campo
+        """
+        if field == 'os':
+            return profile.os.value
+        elif field == 'pm':
+            return profile.package_manager.value
+        elif field == 'editor':
+            return profile.editor.value
+        return 'desconocido'
+
     def _build_profile_card(
         self,
-        profile: Dict[str, str],
+        profile: UserProfile,
         changed_fields: list
     ) -> str:
         """
@@ -383,9 +367,9 @@ class SetProfileIntentHandler(BaseIntentHandler):
         lines = [
             "Tu perfil tecnico actualizado:",
             "",
-            f"Sistema Operativo: {profile.get('os', 'N/A').upper()}",
-            f"Gestor de Paquetes: {profile.get('pm', 'N/A').upper()}",
-            f"Editor: {profile.get('editor', 'N/A').upper()}",
+            f"Sistema Operativo: {profile.os.value.upper()}",
+            f"Gestor de Paquetes: {profile.package_manager.value.upper()}",
+            f"Editor: {profile.editor.value.upper()}",
             ""
         ]
 
@@ -393,7 +377,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
             lines.append("Campos actualizados:")
             for field in changed_fields:
                 field_name = self._get_field_name(field)
-                new_val = profile.get(field, 'N/A')
+                new_val = self._get_field_value(profile, field)
                 lines.append(f"- {field_name.capitalize()}: {new_val.upper()}")
             lines.append("")
 

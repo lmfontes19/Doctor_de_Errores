@@ -17,11 +17,12 @@ Patterns:
 - Decorator (enriquece diagnostico con contexto educativo)
 """
 
-from typing import Dict, Any, Optional
+from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from intents.base import BaseIntentHandler
+from models import Diagnostic
 from utils import get_logger, truncate_text
 
 
@@ -76,27 +77,20 @@ class WhyIntentHandler(BaseIntentHandler):
             Response: Respuesta con explicacion tecnica
         """
         # Verificar que exista un diagnostico previo
-        last_diagnostic = self.get_session_attribute(
-            handler_input,
-            'last_diagnostic'
-        )
+        last_diagnostic = self.get_last_diagnostic(handler_input)
 
         if not last_diagnostic:
             return self._handle_no_diagnostic(handler_input)
 
-        # Extraer explicacion
-        explanation = last_diagnostic.get('explanation')
-
-        if not explanation:
+        # Verificar que tenga explicacion
+        if not last_diagnostic.has_explanation():
             return self._handle_no_explanation(handler_input, last_diagnostic)
-
-        error_type = last_diagnostic.get('error_type', 'este error')
 
         self.logger.info(
             f"Providing explanation",
             extra={
-                'error_type': error_type,
-                'has_explanation': bool(explanation)
+                'error_type': last_diagnostic.error_type,
+                'has_explanation': True
             }
         )
 
@@ -109,7 +103,7 @@ class WhyIntentHandler(BaseIntentHandler):
     def _build_explanation_response(
         self,
         handler_input: HandlerInput,
-        diagnostic: Dict[str, Any]
+        diagnostic: Diagnostic
     ) -> Response:
         """
         Construye la respuesta con la explicacion.
@@ -121,8 +115,8 @@ class WhyIntentHandler(BaseIntentHandler):
         Returns:
             Response de Alexa con explicacion
         """
-        error_type = diagnostic.get('error_type', 'Este error')
-        explanation = diagnostic.get('explanation', '')
+        error_type = diagnostic.error_type
+        explanation = diagnostic.explanation
 
         # Construir texto de voz (simplificado)
         voice_text = self._build_voice_explanation(error_type, explanation)
@@ -175,7 +169,7 @@ class WhyIntentHandler(BaseIntentHandler):
 
         return voice_text
 
-    def _build_detailed_card(self, diagnostic: Dict[str, Any]) -> str:
+    def _build_detailed_card(self, diagnostic: Diagnostic) -> str:
         """
         Construye la card detallada con toda la explicacion.
 
@@ -185,8 +179,8 @@ class WhyIntentHandler(BaseIntentHandler):
         Returns:
             Texto formateado para la card
         """
-        error_type = diagnostic.get('error_type', 'Error')
-        explanation = diagnostic.get('explanation', 'No disponible')
+        error_type = diagnostic.error_type
+        explanation = diagnostic.explanation
 
         lines = [
             f"ERROR: {error_type}",
@@ -200,21 +194,20 @@ class WhyIntentHandler(BaseIntentHandler):
         ]
 
         # Agregar causas comunes si estan disponibles
-        common_causes = diagnostic.get('common_causes', [])
-        if common_causes:
+        if diagnostic.common_causes:
             lines.append("-" * 50)
             lines.append("CAUSAS COMUNES:")
             lines.append("-" * 50)
             lines.append("")
 
-            for i, cause in enumerate(common_causes, 1):
+            for i, cause in enumerate(diagnostic.common_causes, 1):
                 lines.append(f"{i}. {cause}")
 
             lines.append("")
 
         # Agregar informacion de fuente
-        source = diagnostic.get('source', 'unknown')
-        confidence = diagnostic.get('confidence', 0.0)
+        source = diagnostic.source
+        confidence = diagnostic.confidence
 
         lines.append("-" * 50)
         lines.append("INFORMACION:")
@@ -225,14 +218,13 @@ class WhyIntentHandler(BaseIntentHandler):
         lines.append("")
 
         # Agregar errores relacionados si estan disponibles
-        related_errors = diagnostic.get('related_errors', [])
-        if related_errors:
+        if diagnostic.related_errors:
             lines.append("-" * 50)
             lines.append("ERRORES RELACIONADOS:")
             lines.append("-" * 50)
             lines.append("")
 
-            for error in related_errors:
+            for error in diagnostic.related_errors:
                 lines.append(f"- {error}")
 
             lines.append("")
@@ -277,7 +269,7 @@ class WhyIntentHandler(BaseIntentHandler):
     def _handle_no_explanation(
         self,
         handler_input: HandlerInput,
-        diagnostic: Dict[str, Any]
+        diagnostic: Diagnostic
     ) -> Response:
         """
         Maneja el caso donde el diagnostico no tiene explicacion.
@@ -289,7 +281,7 @@ class WhyIntentHandler(BaseIntentHandler):
         Returns:
             Response indicando que no hay explicacion disponible
         """
-        error_type = diagnostic.get('error_type', 'el error')
+        error_type = diagnostic.error_type
 
         self.logger.warning(
             f"Diagnostic has no explanation",

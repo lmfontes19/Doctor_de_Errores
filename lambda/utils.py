@@ -364,7 +364,7 @@ def truncate_text(text: str, max_length: int = 300, suffix: str = "...") -> str:
     Args:
         text: Texto a truncar
         max_length: Longitud maxima
-        suffix: Sufijo a añadir si se trunca (default: "...")
+        suffix: Sufijo a anhadir si se trunca (default: "...")
 
     Returns:
         str: Texto truncado

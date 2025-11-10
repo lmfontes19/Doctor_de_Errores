@@ -19,6 +19,21 @@ from ask_sdk_model import Response
 # Importar LoggerManager centralizado desde utils
 from utils import get_logger_manager, get_logger
 
+# Importar nuevos componentes
+from core.response_builder import response_builder
+from core.factories import ResponseFactory
+from core.interceptors import (
+    RECOMMENDED_REQUEST_INTERCEPTORS,
+    RECOMMENDED_RESPONSE_INTERCEPTORS
+)
+
+# Importar intents personalizados
+from intents.diagnose_intent import DiagnoseIntentHandler
+from intents.more_intent import MoreIntentHandler
+from intents.send_card_intent import SendCardIntentHandler
+from intents.why_intent import WhyIntentHandler
+from intents.set_profile_intent import SetProfileIntentHandler
+
 # ============================================================================
 # Inicialización del Logger Centralizado
 # ============================================================================
@@ -42,14 +57,10 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Welcome, you can say Hello or Help. Which would you like to try?"
+        logger.info("LaunchRequest received")
 
-        return (
-            handler_input.response_builder
-            .speak(speak_output)
-            .ask(speak_output)
-            .response
-        )
+        # Usar ResponseFactory para mensaje de bienvenida
+        return ResponseFactory.create_welcome_response(handler_input)
 
 
 class HelloWorldIntentHandler(AbstractRequestHandler):
@@ -80,14 +91,10 @@ class HelpIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "You can say hello to me! How can I help?"
+        logger.info("HelpIntent received")
 
-        return (
-            handler_input.response_builder
-            .speak(speak_output)
-            .ask(speak_output)
-            .response
-        )
+        # Usar ResponseFactory para mensaje de ayuda
+        return ResponseFactory.create_help_response(handler_input)
 
 
 class CancelOrStopIntentHandler(AbstractRequestHandler):
@@ -100,13 +107,10 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Goodbye!"
+        logger.info("CancelOrStopIntent received")
 
-        return (
-            handler_input.response_builder
-            .speak(speak_output)
-            .response
-        )
+        # Usar ResponseFactory para mensaje de despedida
+        return ResponseFactory.create_goodbye_response(handler_input)
 
 
 class FallbackIntentHandler(AbstractRequestHandler):
@@ -118,11 +122,27 @@ class FallbackIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        logger.info("In FallbackIntentHandler")
-        speech = "Hmm, I'm not sure. You can say Hello or Help. What would you like to do?"
-        reprompt = "I didn't catch that. What can I help you with?"
+        logger.info("FallbackIntentHandler received")
 
-        return handler_input.response_builder.speak(speech).ask(reprompt).response
+        # Usar response_builder con mensaje de fallback
+        speech = (
+            "Lo siento, no entendi tu solicitud. "
+            "Puedes decir cosas como: diagnostica mi error, "
+            "dame mas soluciones, o explicame por que. "
+            "Que te gustaria hacer?"
+        )
+        reprompt = "No logre entender. Como puedo ayudarte?"
+
+        return (
+            response_builder(handler_input)
+            .speak(speech)
+            .ask(reprompt)
+            .simple_card(
+                "Doctor de Errores",
+                "Comandos disponibles: diagnostica, mas soluciones, explicame, configura perfil"
+            )
+            .build()
+        )
 
 
 class SessionEndedRequestHandler(AbstractRequestHandler):
@@ -176,15 +196,12 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
 
     def handle(self, handler_input, exception):
         # type: (HandlerInput, Exception) -> Response
-        logger.error(exception, exc_info=True)
+        logger.error(f"Error handling request: {exception}", exc_info=True)
 
-        speak_output = "Sorry, I had trouble doing what you asked. Please try again."
-
-        return (
-            handler_input.response_builder
-            .speak(speak_output)
-            .ask(speak_output)
-            .response
+        # Usar ResponseFactory para respuesta de error estandarizada
+        return ResponseFactory.create_error_response(
+            handler_input,
+            "Ocurrio un error al procesar tu solicitud. Por favor intenta de nuevo."
         )
 
 # The SkillBuilder object acts as the entry point for your skill, routing all request and response
@@ -194,15 +211,33 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
 
 sb = SkillBuilder()
 
+# Registrar interceptors de request
+for interceptor in RECOMMENDED_REQUEST_INTERCEPTORS:
+    sb.add_global_request_interceptor(interceptor)
+
+# Registrar handlers de intents personalizados
 sb.add_request_handler(LaunchRequestHandler())
+sb.add_request_handler(DiagnoseIntentHandler())
+sb.add_request_handler(MoreIntentHandler())
+sb.add_request_handler(SendCardIntentHandler())
+sb.add_request_handler(WhyIntentHandler())
+sb.add_request_handler(SetProfileIntentHandler())
+
+# Registrar handlers estandar de Alexa
 sb.add_request_handler(HelloWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
-# make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
+
+# IntentReflectorHandler va ultimo para no sobrescribir intents personalizados
 sb.add_request_handler(IntentReflectorHandler())
 
+# Registrar exception handler
 sb.add_exception_handler(CatchAllExceptionHandler())
+
+# Registrar interceptors de response
+for interceptor in RECOMMENDED_RESPONSE_INTERCEPTORS:
+    sb.add_global_response_interceptor(interceptor)
 
 lambda_handler = sb.lambda_handler()

@@ -21,6 +21,7 @@ Patterns:
 from typing import List, Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
+from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic
@@ -182,14 +183,13 @@ class MoreIntentHandler(BaseIntentHandler):
             }
         )
 
+        card = SimpleCard(title=card_title, content=card_text)
+
         # Construir respuesta de Alexa
         return (
             handler_input.response_builder
             .speak(voice_text)
-            .set_card(
-                title=card_title,
-                content=card_text
-            )
+            .set_card(card)
             .ask("Necesitas algo mas?")
             .response
         )
@@ -328,13 +328,12 @@ class MoreIntentHandler(BaseIntentHandler):
         card_title = f"Soluciones para {error_type}"
         card_text = self._build_summary_card(diagnostic)
 
+        card = SimpleCard(title=card_title, content=card_text)
+
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .set_card(
-                title=card_title,
-                content=card_text
-            )
+            .set_card(card)
             .ask("Necesitas algo mas?")
             .response
         )

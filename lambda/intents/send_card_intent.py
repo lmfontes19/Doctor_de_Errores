@@ -19,7 +19,7 @@ Patterns:
 
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
-from ask_sdk_model.ui import StandardCard, Image
+from ask_sdk_model.ui import StandardCard, SimpleCard, Image
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic, UserProfile
@@ -275,13 +275,12 @@ class SendCardIntentHandler(BaseIntentHandler):
             )
         else:
             # SimpleCard sin imagen
+            simple_card = SimpleCard(title=card_title, content=card_content)
+
             return (
                 handler_input.response_builder
                 .speak(speak_output)
-                .set_card(
-                    title=card_title,
-                    content=card_content
-                )
+                .set_card(simple_card)
                 .ask("¿Puedo ayudarte con algo mas?")
                 .response
             )

@@ -23,6 +23,7 @@ Patterns:
 from typing import Dict, Any, Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
+from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import UserProfile, OperatingSystem, PackageManager, Editor
@@ -302,13 +303,12 @@ class SetProfileIntentHandler(BaseIntentHandler):
         card_title = "Perfil Actualizado"
         card_content = self._build_profile_card(new_profile, changed_fields)
 
+        card = SimpleCard(title=card_title, content=card_content)
+
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .set_card(
-                title=card_title,
-                content=card_content
-            )
+            .set_card(card)
             .ask("¿Necesitas diagnosticar algun error?")
             .response
         )

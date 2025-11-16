@@ -20,6 +20,7 @@ Patterns:
 from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
+from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler, require_profile
 from models import Diagnostic, UserProfile, DiagnosticSource
@@ -298,13 +299,15 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         #     .build()
 
         # Por ahora, usar el builder basico de ask_sdk
+        card = SimpleCard(
+            title=diagnostic.card_title,
+            content=diagnostic.card_text
+        )
+
         return (
             handler_input.response_builder
             .speak(voice_text)
-            .set_card(
-                title=diagnostic.card_title,
-                content=diagnostic.card_text
-            )
+            .set_card(card)
             .ask("Necesitas algo mas?")
             .response
         )

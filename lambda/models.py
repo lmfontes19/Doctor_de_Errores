@@ -12,12 +12,29 @@ from enum import Enum
 
 class ErrorType(Enum):
     """Tipos de errores soportados."""
-    MODULE_NOT_FOUND = "py_module_not_found"
-    SYNTAX_ERROR = "py_syntax_error"
-    TYPE_ERROR = "py_type_error"
-    INDENTATION_ERROR = "py_indentation_error"
-    NAME_ERROR = "py_name_error"
+    # Errores generales
+    GENERIC_ERROR = "generic_error"
     UNKNOWN = "unknown"
+
+    # Errores de módulos e imports
+    MODULE_NOT_FOUND = "py_module_not_found"
+    PY_MODULE_NOT_FOUND = "py_module_not_found"  # Alias
+
+    # Errores de sintaxis
+    SYNTAX_ERROR = "py_syntax_error"
+    PY_SYNTAX_ERROR = "py_syntax_error"  # Alias
+
+    # Errores de tipos
+    TYPE_ERROR = "py_type_error"
+
+    # Errores de indentación
+    INDENTATION_ERROR = "py_indentation_error"
+
+    # Errores de nombres
+    NAME_ERROR = "py_name_error"
+
+    # Errores de archivos y permisos
+    FILE_PERMISSION_ERROR = "file_permission_error"
 
     @classmethod
     def from_string(cls, value: str) -> 'ErrorType':

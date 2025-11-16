@@ -148,10 +148,12 @@ class UserProfile:
         os: Sistema operativo
         package_manager: Gestor de paquetes
         editor: Editor de codigo
+        is_configured: True si el usuario configuró su perfil, False si es default
     """
     os: OperatingSystem = OperatingSystem.LINUX
     package_manager: PackageManager = PackageManager.PIP
     editor: Editor = Editor.VSCODE
+    is_configured: bool = False
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> 'UserProfile':
@@ -179,7 +181,8 @@ class UserProfile:
         return cls(
             os=OperatingSystem.from_string(data.get('os', 'linux')),
             package_manager=PackageManager.from_string(data.get('pm', 'pip')),
-            editor=Editor.from_string(data.get('editor', 'vscode'))
+            editor=Editor.from_string(data.get('editor', 'vscode')),
+            is_configured=data.get('is_configured', False)
         )
 
     def to_dict(self) -> Dict[str, str]:
@@ -197,7 +200,8 @@ class UserProfile:
         return {
             'os': self.os.value,
             'pm': self.package_manager.value,
-            'editor': self.editor.value
+            'editor': self.editor.value,
+            'is_configured': self.is_configured
         }
 
     def update(self, **kwargs) -> 'UserProfile':
@@ -208,22 +212,27 @@ class UserProfile:
             **kwargs: os, pm, editor como strings
 
         Returns:
-            Nuevo UserProfile actualizado
+            Nuevo UserProfile actualizado (marcado como configurado)
 
         Example:
             >>> profile = UserProfile()
             >>> updated = profile.update(os='windows')
             >>> updated.os
             <OperatingSystem.WINDOWS: 'windows'>
+            >>> updated.is_configured
+            True
         """
         current = self.to_dict()
 
-        if 'os' in kwargs:
+        if 'os' in kwargs and kwargs['os']:
             current['os'] = kwargs['os']
-        if 'pm' in kwargs:
+        if 'pm' in kwargs and kwargs['pm']:
             current['pm'] = kwargs['pm']
-        if 'editor' in kwargs:
+        if 'editor' in kwargs and kwargs['editor']:
             current['editor'] = kwargs['editor']
+
+        # Marcar como configurado cuando se actualiza
+        current['is_configured'] = True
 
         return UserProfile.from_dict(current)
 

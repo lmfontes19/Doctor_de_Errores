@@ -614,7 +614,7 @@ def require_profile(func):
     def wrapper(self, handler_input: HandlerInput) -> Response:
         profile = self.get_user_profile(handler_input)
 
-        if not profile:
+        if not profile.is_configured:
             speak_output = (
                 "Primero necesito que configures tu perfil. "
                 "Dime, que sistema operativo usas? "

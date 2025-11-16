@@ -60,8 +60,12 @@
           "name": "WhyIntent",
           "samples": [
             "por qué pasa esto",
-            "explícame la causa",
+            "por qué ocurre esto",
+            "por qué ocurre",
             "por qué sucede esto",
+            "explícame la causa",
+            "explícame por qué",
+            "dime por qué ocurre",
             "dime la razón"
           ]
         },

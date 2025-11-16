@@ -615,6 +615,18 @@ def require_profile(func):
         profile = self.get_user_profile(handler_input)
 
         if not profile.is_configured:
+            # Guardar errorText pendiente si existe (para DiagnoseIntent)
+            error_text = None
+            try:
+                slots = handler_input.request_envelope.request.intent.slots
+                if slots and 'errorText' in slots and slots['errorText'].value:
+                    error_text = slots['errorText'].value
+                    # Guardar en sesión para procesarlo después
+                    self.set_session_attribute(
+                        handler_input, 'pending_error_text', error_text)
+            except Exception as e:
+                self.logger.warning(f"Error getting pending error text: {str(e)}")
+
             speak_output = (
                 "Primero necesito que configures tu perfil. "
                 "Dime, que sistema operativo usas? "

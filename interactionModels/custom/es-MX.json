@@ -8,7 +8,15 @@
         },
         {
           "name": "AMAZON.HelpIntent",
-          "samples": []
+          "samples": [
+            "qué puedes hacer",
+            "qué sabes hacer",
+            "cómo funciona esto",
+            "cómo te uso",
+            "qué comandos tienes",
+            "necesito ayuda",
+            "ayúdame"
+          ]
         },
         {
           "name": "AMAZON.StopIntent",
@@ -96,8 +104,15 @@
           "name": "SetProfileIntent",
           "samples": [
             "uso {so} y {pm}",
+            "uso {so} con {pm}",
+            "tengo {so} y {pm}",
+            "mi sistema es {so} y uso {pm}",
+            "trabajo con {so} y {pm}",
             "cámbialo a {pm}",
-            "uso {editor} en {so}"
+            "usa {pm}",
+            "configura {so}",
+            "uso {editor} en {so}",
+            "{so} {pm}"
           ]
         },
         {
@@ -114,22 +129,44 @@
           "values": [
             {
               "name": {
-                "value": "Windows"
+                "value": "Windows",
+                "synonyms": [
+                  "win",
+                  "windows",
+                  "ventanas"
+                ]
               }
             },
             {
               "name": {
-                "value": "macOS"
+                "value": "macOS",
+                "synonyms": [
+                  "mac",
+                  "macos",
+                  "apple",
+                  "osx"
+                ]
               }
             },
             {
               "name": {
-                "value": "Linux"
+                "value": "Linux",
+                "synonyms": [
+                  "linux",
+                  "ubuntu",
+                  "debian",
+                  "gnu"
+                ]
               }
             },
             {
               "name": {
-                "value": "WSL"
+                "value": "WSL",
+                "synonyms": [
+                  "wsl",
+                  "subsistema",
+                  "windows subsystem"
+                ]
               }
             }
           ],
@@ -139,17 +176,30 @@
           "values": [
             {
               "name": {
-                "value": "pip"
+                "value": "pip",
+                "synonyms": [
+                  "pip",
+                  "pypi"
+                ]
               }
             },
             {
               "name": {
-                "value": "conda"
+                "value": "conda",
+                "synonyms": [
+                  "conda",
+                  "anaconda",
+                  "miniconda"
+                ]
               }
             },
             {
               "name": {
-                "value": "poetry"
+                "value": "poetry",
+                "synonyms": [
+                  "poetry",
+                  "poesía"
+                ]
               }
             }
           ],
@@ -159,17 +209,33 @@
           "values": [
             {
               "name": {
-                "value": "VSCode"
+                "value": "VSCode",
+                "synonyms": [
+                  "vscode",
+                  "visual studio code",
+                  "vs code",
+                  "code"
+                ]
               }
             },
             {
               "name": {
-                "value": "PyCharm"
+                "value": "PyCharm",
+                "synonyms": [
+                  "pycharm",
+                  "pi charm",
+                  "py charm"
+                ]
               }
             },
             {
               "name": {
-                "value": "Jupyter"
+                "value": "Jupyter",
+                "synonyms": [
+                  "jupyter",
+                  "jupiter",
+                  "notebook"
+                ]
               }
             }
           ],

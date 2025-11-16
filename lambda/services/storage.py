@@ -58,21 +58,25 @@ class StorageService:
         Obtiene referencia a tabla DynamoDB (lazy initialization).
 
         Returns:
-            Tabla de DynamoDB
-
-        Raises:
-            StorageError: Si no se puede conectar
+            Tabla de DynamoDB o None si no está disponible
         """
         if self._table is None:
             try:
                 import boto3
+                from config.settings import ENABLE_STORAGE
+
+                # Si storage está deshabilitado, no intentar conectar
+                if not ENABLE_STORAGE:
+                    self.logger.info("Storage deshabilitado por configuración")
+                    return None
+
                 self._dynamodb = boto3.resource('dynamodb')
                 self._table = self._dynamodb.Table(self.table_name)
                 self.logger.info(
                     f"Connected to DynamoDB table: {self.table_name}")
             except Exception as e:
-                self.logger.error(f"Failed to connect to DynamoDB: {e}")
-                raise StorageError(f"DynamoDB connection failed: {e}")
+                self.logger.warning(f"DynamoDB no disponible: {e}")
+                return None
 
         return self._table
 
@@ -102,13 +106,14 @@ class StorageService:
             profile: Perfil a guardar
 
         Returns:
-            True si se guardo exitosamente
-
-        Raises:
-            StorageError: Si falla el guardado
+            True si se guardo exitosamente, False si DynamoDB no disponible
         """
         try:
             table = self._get_table()
+            if table is None:
+                self.logger.warning(
+                    "DynamoDB no disponible, saltando guardado de perfil")
+                return False
 
             # Convertir perfil a dict
             profile_data = profile.to_dict()
@@ -129,7 +134,7 @@ class StorageService:
 
         except Exception as e:
             self.logger.error(f"Failed to save profile: {e}", exc_info=True)
-            raise StorageError(f"Save failed: {e}")
+            return False
 
     def get_user_profile(
         self,
@@ -142,13 +147,13 @@ class StorageService:
             user_id: ID del usuario de Alexa
 
         Returns:
-            UserProfile o None si no existe
-
-        Raises:
-            StorageError: Si falla la lectura
+            UserProfile o None si no existe o DynamoDB no disponible
         """
         try:
             table = self._get_table()
+            if table is None:
+                self.logger.warning("DynamoDB no disponible, retornando None")
+                return None
 
             # Obtener item
             response = table.get_item(Key={'userId': user_id})
@@ -171,7 +176,7 @@ class StorageService:
 
         except Exception as e:
             self.logger.error(f"Failed to get profile: {e}", exc_info=True)
-            raise StorageError(f"Get failed: {e}")
+            return None
 
     def save_diagnostic_history(
         self,
@@ -186,13 +191,14 @@ class StorageService:
             diagnostic: Diagnostico a guardar
 
         Returns:
-            True si se guardo exitosamente
-
-        Raises:
-            StorageError: Si falla el guardado
+            True si se guardo exitosamente, False si DynamoDB no disponible
         """
         try:
             table = self._get_table()
+            if table is None:
+                self.logger.warning(
+                    "DynamoDB no disponible, saltando guardado de historial")
+                return False
 
             # Obtener historial actual
             response = table.get_item(Key={'userId': user_id})
@@ -235,7 +241,7 @@ class StorageService:
         except Exception as e:
             self.logger.error(
                 f"Failed to save diagnostic history: {e}", exc_info=True)
-            raise StorageError(f"History save failed: {e}")
+            return False
 
     def get_diagnostic_history(
         self,

@@ -150,9 +150,9 @@ class KnowledgeBaseService:
         Calcula confidence score para un template.
 
         Estrategia de scoring:
-        - Pattern match: +0.5 por cada pattern que coincida
-        - Keyword match: +0.1 por cada keyword encontrado
-        - Boost del template: bonus adicional
+        - Pattern match: +0.7 por cada pattern que coincida (max 1.0)
+        - Keyword match: +0.1 por cada keyword encontrado (max 0.4)
+        - Boost del template: bonus adicional (0.1-0.3 tipicamente)
 
         Args:
             template: Template de error de la KB
@@ -174,9 +174,9 @@ class KnowledgeBaseService:
             except re.error:
                 self.logger.warning(f"Invalid regex pattern: {pattern}")
 
-        # Cada pattern da 0.5 puntos (maximo 1.0 con 2+ patterns)
+        # Cada pattern da más peso (0.7 puntos, maximo 1.0 con 2+ patterns)
         if patterns:
-            score += min(1.0, (pattern_matches / len(patterns)) * 0.5 * 2)
+            score += min(1.0, (pattern_matches / len(patterns)) * 0.7 * 2)
 
         # 2. Buscar keywords
         keywords = template.get('keywords', [])

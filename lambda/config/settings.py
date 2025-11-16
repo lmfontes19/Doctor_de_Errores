@@ -60,7 +60,7 @@ RESPONSE_TIMEOUT = 30  # segundos
 # ============================================================================
 
 # Umbrales de confianza
-KB_CONFIDENCE_THRESHOLD = float(os.getenv('KB_CONFIDENCE_THRESHOLD', '0.70'))
+KB_CONFIDENCE_THRESHOLD = float(os.getenv('KB_CONFIDENCE_THRESHOLD', '0.60'))
 KB_MIN_CONFIDENCE = 0.3
 
 # Path a KB templates (relativo a este archivo)

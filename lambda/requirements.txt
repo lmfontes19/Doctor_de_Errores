@@ -5,5 +5,8 @@ ask-sdk-model
 # AWS Services
 boto3
 
+# Environment variables
+python-dotenv
+
 # Optional: OpenAI (si quieres usar OpenAI en vez de solo Bedrock)
 # openai==1.3.0

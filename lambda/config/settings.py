@@ -9,6 +9,24 @@ Las configuraciones pueden ser sobrescritas con variables de entorno.
 
 import os
 from typing import Optional
+from pathlib import Path
+
+# Cargar variables de entorno desde .env
+try:
+    from dotenv import load_dotenv
+
+    # Buscar .env en el directorio lambda/
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"Variables de entorno cargadas desde: {env_path}")
+    else:
+        print(f"Archivo .env no encontrado en: {env_path}")
+        print("Usando variables de entorno del sistema o valores por defecto")
+except ImportError:
+    print("python-dotenv no instalado. Usando variables de entorno del sistema.")
+except Exception as e:
+    print(f"Error cargando .env: {e}")
 
 
 # ============================================================================

@@ -21,6 +21,7 @@ from models import (
     PackageManager,
     Editor
 )
+from .solution_extractors import SolutionExtractionStrategy
 
 
 class DiagnosticFactory:
@@ -30,6 +31,9 @@ class DiagnosticFactory:
     Proporciona metodos estaticos para crear diagnosticos desde
     diferentes fuentes (Knowledge Base, AI, error directo).
     """
+
+    # Strategy compartida por todas las instancias
+    _solution_strategy = SolutionExtractionStrategy()
 
     @staticmethod
     def from_kb_result(
@@ -55,40 +59,13 @@ class DiagnosticFactory:
             >>> diagnostic = DiagnosticFactory.from_kb_result(kb_result, profile)
         """
         error_type = kb_result.get('error_type', 'unknown')
-
-        # Extraer soluciones según el perfil del usuario
         solutions_data = kb_result.get('solutions', [])
 
-        # Si solutions es un diccionario anidado (por OS/PM), extraer la sección correcta
-        if isinstance(solutions_data, dict):
-            os_key = user_profile.os.value
-            pm_key = user_profile.package_manager.value
-
-            # Intentar obtener soluciones para el OS específico
-            os_solutions = solutions_data.get(os_key, {})
-
-            if isinstance(os_solutions, dict):
-                # Obtener soluciones para el PM específico
-                solutions = os_solutions.get(pm_key, [])
-
-                # Si no hay para ese PM, usar el primero disponible
-                if not solutions and os_solutions:
-                    solutions = next(iter(os_solutions.values()), [])
-            else:
-                solutions = os_solutions if isinstance(
-                    os_solutions, list) else []
-
-            # Si no hay soluciones para ese OS, intentar con linux como fallback
-            if not solutions and 'linux' in solutions_data:
-                linux_solutions = solutions_data['linux']
-                if isinstance(linux_solutions, dict):
-                    solutions = linux_solutions.get(pm_key, [])
-                    if not solutions:
-                        solutions = next(iter(linux_solutions.values()), [])
-        else:
-            # Si es una lista simple, usarla directamente
-            solutions = solutions_data if isinstance(
-                solutions_data, list) else []
+        # Usar Strategy Pattern para extraer soluciones (sin if/else anidados)
+        solutions = DiagnosticFactory._solution_strategy.extract_solutions(
+            solutions_data,
+            user_profile
+        )
 
         # Personalizar soluciones (reemplazar placeholders)
         personalized_solutions = DiagnosticFactory._personalize_solutions(

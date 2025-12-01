@@ -135,10 +135,13 @@ class KnowledgeBaseService:
                 best_confidence = confidence
                 best_match = template
 
-        # Solo retornar si confidence es suficiente
-        if best_confidence >= 0.3:  # Umbral minimo
+        # Solo retornar si confidence es suficiente (umbral bajo para capturar mas)
+        if best_confidence >= 0.25:  # Umbral minimo reducido
+            self.logger.info(f"Best match confidence: {best_confidence:.2f}")
             return (best_match, best_confidence)
 
+        self.logger.info(
+            f"No match above threshold (best: {best_confidence:.2f})")
         return None
 
     def _calculate_confidence(
@@ -150,6 +153,7 @@ class KnowledgeBaseService:
         Calcula confidence score para un template.
 
         Estrategia de scoring:
+        - Error type match exacto: +0.8 si el error_type esta en el texto
         - Pattern match: +0.7 por cada pattern que coincida (max 1.0)
         - Keyword match: +0.1 por cada keyword encontrado (max 0.4)
         - Boost del template: bonus adicional (0.1-0.3 tipicamente)
@@ -162,6 +166,22 @@ class KnowledgeBaseService:
             Confidence score entre 0.0 y 1.0
         """
         score = 0.0
+        error_text_normalized = error_text.replace(' ', '').replace('_', '')
+
+        # 0. Buscar error_type directamente (alta prioridad)
+        error_type = template.get('error_type', '')
+        if error_type:
+            error_type_lower = error_type.lower()
+            error_type_normalized = error_type_lower.replace(
+                ' ', '').replace('_', '')
+
+            error_base = error_type_lower.replace('error', '').strip()
+
+            if (error_type_lower in error_text or
+                error_type_normalized in error_text_normalized or
+                    (error_base and error_base in error_text)):
+                score += 0.8
+                self.logger.debug(f"Error type match: {error_type}")
 
         # 1. Buscar patterns (regex)
         patterns = template.get('patterns', [])
@@ -171,11 +191,12 @@ class KnowledgeBaseService:
             try:
                 if re.search(pattern, error_text, re.IGNORECASE):
                     pattern_matches += 1
+                    self.logger.debug(f"Pattern match: {pattern}")
             except re.error:
                 self.logger.warning(f"Invalid regex pattern: {pattern}")
 
-        # Cada pattern da más peso (0.7 puntos, maximo 1.0 con 2+ patterns)
-        if patterns:
+        # Cada pattern da mas peso (0.7 puntos, maximo 1.0 con 2+ patterns)
+        if patterns and pattern_matches > 0:
             score += min(1.0, (pattern_matches / len(patterns)) * 0.7 * 2)
 
         # 2. Buscar keywords
@@ -185,9 +206,10 @@ class KnowledgeBaseService:
         for keyword in keywords:
             if keyword.lower() in error_text:
                 keyword_matches += 1
+                self.logger.debug(f"Keyword match: {keyword}")
 
         # Cada keyword da 0.1 puntos (maximo 0.4 con 4+ keywords)
-        if keywords:
+        if keywords and keyword_matches > 0:
             score += min(0.4, (keyword_matches / len(keywords)) * 0.1 * 4)
 
         # 3. Boost del template
@@ -195,7 +217,17 @@ class KnowledgeBaseService:
         score += confidence_boost
 
         # Normalizar a [0.0, 1.0]
-        return min(1.0, score)
+        final_score = min(1.0, score)
+
+        if final_score > 0.3:
+            self.logger.debug(
+                f"Template {template.get('id')} confidence: {final_score:.2f} "
+                f"(error_type: {error_type.lower() in error_text}, "
+                f"patterns: {pattern_matches}/{len(patterns)}, "
+                f"keywords: {keyword_matches}/{len(keywords)})"
+            )
+
+        return final_score
 
     def get_template_by_id(self, template_id: str) -> Optional[Dict[str, Any]]:
         """

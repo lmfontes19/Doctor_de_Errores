@@ -4,7 +4,13 @@
       "intents": [
         {
           "name": "AMAZON.CancelIntent",
-          "samples": []
+          "samples": [
+            "cancela",
+            "cancelar",
+            "detente",
+            "para",
+            "termina"
+          ]
         },
         {
           "name": "AMAZON.HelpIntent",
@@ -20,7 +26,23 @@
         },
         {
           "name": "AMAZON.StopIntent",
-          "samples": []
+          "samples": [
+            "adiós",
+            "chao",
+            "hasta luego",
+            "nos vemos",
+            "salir",
+            "sal",
+            "cierra",
+            "gracias adiós",
+            "gracias chao",
+            "muchas gracias adiós",
+            "perfecto adiós",
+            "listo gracias",
+            "ya está gracias",
+            "eso es todo",
+            "eso es todo gracias"
+          ]
         },
         {
           "name": "AMAZON.FallbackIntent",

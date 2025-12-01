@@ -5,7 +5,6 @@
 # session persistence, api calls, and more.
 # This sample is built using the handler classes approach in skill builder.
 
-# Importaciones estándar
 import logging
 
 # Importaciones de Alexa SDK

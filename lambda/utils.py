@@ -404,6 +404,38 @@ def sanitize_user_data(text: str, keywords: list = None) -> str:
     return sanitized
 
 
+def sanitize_ssml_text(text: str) -> str:
+    """
+    Sanitiza texto para uso seguro en SSML de Alexa.
+
+    Elimina o reemplaza caracteres que pueden romper SSML:
+    - & (ampersand) -> 'y'
+    - < (less than) -> removido
+    - > (greater than) -> removido
+    - " (double quote) -> removido
+    - ' (single quote) -> removido
+
+    Args:
+        text: Texto a sanitizar
+
+    Returns:
+        str: Texto sanitizado y seguro para SSML
+
+    Usage:
+        safe_text = sanitize_ssml_text(diagnostic_text)
+    """
+    if not text:
+        return ""
+
+    sanitized = text.replace('&', ' y ')
+    sanitized = sanitized.replace('<', '')
+    sanitized = sanitized.replace('>', '')
+    sanitized = sanitized.replace('"', '')
+    sanitized = sanitized.replace("'", '')
+
+    return sanitized
+
+
 def format_timestamp(dt: Optional[datetime] = None) -> str:
     """
     Formatea un timestamp de forma consistente.

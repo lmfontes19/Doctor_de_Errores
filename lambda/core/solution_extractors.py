@@ -45,7 +45,7 @@ class SolutionExtractor(ABC):
             user_profile: Perfil del usuario para personalizacion
 
         Returns:
-            Lista de soluciones extraídas
+            Lista de soluciones extraidas
         """
 
 
@@ -129,7 +129,7 @@ class FlatDictExtractor(SolutionExtractor):
         """Extrae soluciones del diccionario plano."""
         os_key = user_profile.os.value
 
-        # Intentar obtener soluciones para el OS específico
+        # Intentar obtener soluciones para el OS especifico
         solutions = solutions_data.get(os_key, [])
 
         if not solutions and 'linux' in solutions_data:
@@ -164,11 +164,11 @@ class ListExtractor(SolutionExtractor):
 
 class EmptyExtractor(SolutionExtractor):
     """
-    Extractor fallback para datos vacíos o inválidos.
+    Extractor fallback para datos vacios o invalidos.
     """
 
     def can_extract(self, solutions_data: Any) -> bool:
-        """Siempre puede "extraer" (retornando lista vacía)."""
+        """Siempre puede "extraer" (retornando lista vacia)."""
         return True
 
     def extract(
@@ -176,7 +176,7 @@ class EmptyExtractor(SolutionExtractor):
         solutions_data: Any,
         user_profile: UserProfile
     ) -> List[str]:
-        """Retorna lista vacía."""
+        """Retorna lista vacia."""
         return []
 
 
@@ -210,7 +210,7 @@ class SolutionExtractionStrategy:
             user_profile: Perfil del usuario
 
         Returns:
-            Lista de soluciones extraídas
+            Lista de soluciones extraidas
 
         Example:
             >>> strategy = SolutionExtractionStrategy()

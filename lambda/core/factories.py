@@ -61,30 +61,32 @@ class DiagnosticFactory:
         error_type = kb_result.get('error_type', 'unknown')
         solutions_data = kb_result.get('solutions', [])
 
-        # Usar Strategy Pattern para extraer soluciones (sin if/else anidados)
+        diagnosis = kb_result.get('diagnosis', {})
+
         solutions = DiagnosticFactory._solution_strategy.extract_solutions(
             solutions_data,
             user_profile
         )
 
-        # Personalizar soluciones (reemplazar placeholders)
         personalized_solutions = DiagnosticFactory._personalize_solutions(
             solutions, user_profile
         )
 
-        # Construir texto de voz
-        voice_text = DiagnosticFactory._build_voice_text(
+        voice_text = diagnosis.get('voice_text') or DiagnosticFactory._build_voice_text(
             error_type,
             personalized_solutions
         )
+        explanation = diagnosis.get('explanation', '')
 
-        # Construir titulo y texto de card
-        card_title = DiagnosticFactory._build_card_title(error_type)
+        card_title = diagnosis.get(
+            'title') or DiagnosticFactory._build_card_title(error_type)
         card_text = DiagnosticFactory._build_card_text(
             error_type,
             personalized_solutions,
-            kb_result.get('explanation', '')
+            explanation
         )
+
+        common_causes = diagnosis.get('common_causes', [])
 
         return Diagnostic(
             error_type=error_type,
@@ -92,10 +94,10 @@ class DiagnosticFactory:
             card_title=card_title,
             card_text=card_text,
             solutions=personalized_solutions,
-            explanation=kb_result.get('explanation'),
+            explanation=explanation,
             confidence=kb_result.get('confidence', 0.0),
             source=DiagnosticSource.KNOWLEDGE_BASE.value,
-            common_causes=kb_result.get('common_causes', []),
+            common_causes=common_causes,
             related_errors=kb_result.get('related_errors', [])
         )
 

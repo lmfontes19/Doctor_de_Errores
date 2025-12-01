@@ -21,11 +21,11 @@ Patterns:
 from typing import List, Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
-from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic
-from utils import get_logger, truncate_text
+from utils import get_logger, truncate_text, sanitize_ssml_text
+from core.response_builder import AlexaResponseBuilder
 
 
 class MoreIntentHandler(BaseIntentHandler):
@@ -150,8 +150,9 @@ class MoreIntentHandler(BaseIntentHandler):
         """
         error_type = diagnostic.error_type
 
-        # Construir texto de voz
-        voice_text = f"Solucion {current_number} de {total_solutions}. {solution}"
+        # Sanitizar y construir texto de voz
+        safe_solution = sanitize_ssml_text(solution or "")
+        voice_text = f"Solucion {current_number} de {total_solutions}. {safe_solution}"
 
         # Agregar prompt contextual
         remaining = total_solutions - current_number
@@ -183,15 +184,13 @@ class MoreIntentHandler(BaseIntentHandler):
             }
         )
 
-        card = SimpleCard(title=card_title, content=card_text)
-
-        # Construir respuesta de Alexa
+        # Construir respuesta con ResponseBuilder
         return (
-            handler_input.response_builder
+            AlexaResponseBuilder(handler_input)
             .speak(voice_text)
-            .set_card(card)
+            .simple_card(card_title, card_text)
             .ask("Necesitas algo mas?")
-            .response
+            .build()
         )
 
     def _build_card_text(
@@ -233,7 +232,7 @@ class MoreIntentHandler(BaseIntentHandler):
                 "_Todas las soluciones mostradas. Di 'por que pasa esto' para mas detalles._")
 
         # Agregar link a explicacion completa si esta disponible
-        if diagnostic.get('explanation'):
+        if diagnostic.has_explanation():
             card_lines.append("")
             card_lines.append(
                 "**Mas informacion**: Di 'por que pasa esto' para entender la causa raiz.")
@@ -256,14 +255,17 @@ class MoreIntentHandler(BaseIntentHandler):
         self.logger.warning("MoreIntent called without previous diagnostic")
 
         speak_output = (
-            "Primero necesito diagnosticar un error. "
-            "Dime que error estas teniendo. Por ejemplo: tengo un error module not found."
+            "Primero necesito diagnosticar un error para darte soluciones. "
+            "¿Que error estas teniendo? "
+            "Por ejemplo, puedes decir: tengo un error module not found."
         )
+
+        reprompt = "Describe el error que estas viendo en tu codigo."
 
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .ask(speak_output)
+            .ask(reprompt)
             .response
         )
 
@@ -328,14 +330,12 @@ class MoreIntentHandler(BaseIntentHandler):
         card_title = f"Soluciones para {error_type}"
         card_text = self._build_summary_card(diagnostic)
 
-        card = SimpleCard(title=card_title, content=card_text)
-
         return (
-            handler_input.response_builder
+            AlexaResponseBuilder(handler_input)
             .speak(speak_output)
-            .set_card(card)
+            .simple_card(card_title, card_text)
             .ask("Necesitas algo mas?")
-            .response
+            .build()
         )
 
     def _build_summary_card(self, diagnostic: Diagnostic) -> str:

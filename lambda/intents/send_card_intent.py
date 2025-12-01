@@ -89,7 +89,7 @@ class SendCardIntentHandler(BaseIntentHandler):
         user_profile = self.get_user_profile(handler_input)
 
         self.logger.info(
-            f"Sending card to app",
+            "Sending card to app",
             extra={
                 'error_type': last_diagnostic.error_type,
                 'has_solutions': last_diagnostic.has_solutions()
@@ -273,17 +273,17 @@ class SendCardIntentHandler(BaseIntentHandler):
                 .ask("¿Puedo ayudarte con algo mas?")
                 .response
             )
-        else:
-            # SimpleCard sin imagen
-            simple_card = SimpleCard(title=card_title, content=card_content)
 
-            return (
-                handler_input.response_builder
-                .speak(speak_output)
-                .set_card(simple_card)
-                .ask("¿Puedo ayudarte con algo mas?")
-                .response
-            )
+        # SimpleCard sin imagen
+        simple_card = SimpleCard(title=card_title, content=card_content)
+
+        return (
+            handler_input.response_builder
+            .speak(speak_output)
+            .set_card(simple_card)
+            .ask("¿Puedo ayudarte con algo mas?")
+            .response
+        )
 
     def _handle_no_diagnostic(self, handler_input: HandlerInput) -> Response:
         """

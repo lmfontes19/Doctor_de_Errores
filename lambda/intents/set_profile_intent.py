@@ -145,16 +145,16 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 handler_input.response_builder
                 .speak(
                     "Lo siento, tuve un problema configurando tu perfil. "
-                    "Por favor, inténtalo de nuevo diciendo, por ejemplo: "
+                    "Por favor, intentalo de nuevo diciendo, por ejemplo: "
                     "'uso Windows y pip'."
                 )
-                .ask("¿Qué sistema operativo y gestor de paquetes usas?")
+                .ask("¿Que sistema operativo y gestor de paquetes usas?")
                 .response
             )
 
     def _handle_profile_configuration(self, handler_input: HandlerInput) -> Response:
         """
-        Lógica interna para configurar el perfil.
+        Logica interna para configurar el perfil.
 
         Args:
             handler_input: Input del request de Alexa
@@ -184,7 +184,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
         editor_value, editor_valid = self._validate_and_normalize(
             editor_slot, self.EDITOR_ALIASES, 'editor') if editor_slot else (None, True)
 
-        # Detección especial: si pm_slot contiene un editor conocido, avisar específicamente
+        # Deteccion especial: si pm_slot contiene un editor conocido, avisar especificamente
         if pm_slot and not pm_valid:
             pm_lower = pm_slot.lower()
             if pm_lower in ['vscode', 'pycharm', 'jupyter', 'vim', 'code', 'visual studio code']:
@@ -192,12 +192,12 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 error_msg = (
                     f"Veo que mencionaste '{pm_slot}', pero ese es un editor, no un gestor de paquetes. "
                     f"Los gestores de paquetes son: pip, conda o poetry. "
-                    f"Por favor, dime de nuevo tu configuración. Por ejemplo: 'uso Windows y pip'."
+                    f"Por favor, dime de nuevo tu configuracion. Por ejemplo: 'uso Windows y pip'."
                 )
                 return (
                     handler_input.response_builder
                     .speak(error_msg)
-                    .ask("¿Qué sistema operativo y gestor de paquetes usas? Por ejemplo: Windows con pip")
+                    .ask("¿Que sistema operativo y gestor de paquetes usas? Por ejemplo: Windows con pip")
                     .response
                 )
 
@@ -208,16 +208,16 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 'pm_value': pm_value, 'pm_valid': pm_valid,
                 'editor_value': editor_value, 'editor_valid': editor_valid
             }
-        )        # Si hay valores inválidos, reportar error con logging
+        )        # Si hay valores invalidos, reportar error con logging
         if not (so_valid and pm_valid and editor_valid):
             invalid_items = []
             if not so_valid:
                 invalid_items.append(
-                    f"'{so_slot}' no es un sistema operativo válido")
+                    f"'{so_slot}' no es un sistema operativo valido")
                 self.logger.warning(f"Invalid OS: {so_slot}")
             if not pm_valid:
                 invalid_items.append(
-                    f"'{pm_slot}' no es un gestor de paquetes válido como pip, conda o poetry")
+                    f"'{pm_slot}' no es un gestor de paquetes valido como pip, conda o poetry")
                 self.logger.warning(f"Invalid PM: {pm_slot}")
             if not editor_valid:
                 invalid_items.append(
@@ -225,18 +225,18 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 self.logger.warning(f"Invalid editor: {editor_slot}")
 
             error_msg = "Lo siento, " + ", ".join(invalid_items) + ". "
-            error_msg += "Por favor, inténtalo de nuevo. Di, por ejemplo: 'uso Windows y pip' o 'uso Linux con conda'."
+            error_msg += "Por favor, intentalo de nuevo. Di, por ejemplo: 'uso Windows y pip' o 'uso Linux con conda'."
 
             self.logger.info(f"Returning validation error: {error_msg}")
 
             return (
                 handler_input.response_builder
                 .speak(error_msg)
-                .ask("¿Qué sistema operativo y gestor de paquetes usas?")
+                .ask("¿Que sistema operativo y gestor de paquetes usas?")
                 .response
             )
 
-        # Verificar que al menos un slot válido esté presente
+        # Verificar que al menos un slot valido este presente
         if not any([so_value, pm_value, editor_value]):
             self.logger.warning(
                 "No valid slots provided",
@@ -283,7 +283,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
             self.set_session_attribute(
                 handler_input, 'pending_error_text', None)
 
-            # Importar aquí para evitar dependencia circular
+            # Importar aqui para evitar dependencia circular
             from intents.diagnose_intent import DiagnoseIntentHandler
 
             # Crear un DiagnoseIntent handler y procesarlo
@@ -294,12 +294,12 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 extra={'error_text': pending_error[:50]}
             )
 
-            # Simular el diagnóstico directamente
+            # Simular el diagnostico directamente
             from models import Diagnostic
             from services.kb_service import kb_service
             from services.ai_client import ai_service
 
-            # Generar diagnóstico
+            # Generar diagnostico
             kb_result = kb_service.search_diagnostic(
                 pending_error, new_profile)
 
@@ -308,15 +308,15 @@ class SetProfileIntentHandler(BaseIntentHandler):
             else:
                 diagnostic = ai_service.diagnose(pending_error, new_profile)
 
-            # Guardar en sesión
+            # Guardar en sesion
             self.save_last_diagnostic(handler_input, diagnostic)
 
-            # Construir respuesta con perfil + diagnóstico (con límites de longitud)
-            profile_msg = f"Perfecto. Configuré tu perfil para {new_profile.os.value} con {new_profile.package_manager.value}. "
+            # Construir respuesta con perfil + diagnostico (con limites de longitud)
+            profile_msg = f"Perfecto. Configure tu perfil para {new_profile.os.value} con {new_profile.package_manager.value}. "
 
             # Sanitizar y truncar voice_text
-            diagnostic_msg = diagnostic.voice_text or "Detecté el error."
-            # Escapar caracteres problemáticos para SSML
+            diagnostic_msg = diagnostic.voice_text or "Detecte el error."
+            # Escapar caracteres problematicos para SSML
             diagnostic_msg = diagnostic_msg.replace(
                 '&', 'y').replace('<', '').replace('>', '')
             diagnostic_msg = diagnostic_msg.replace('"', '').replace("'", '')
@@ -334,15 +334,15 @@ class SetProfileIntentHandler(BaseIntentHandler):
             self.logger.info(f"speak_output length: {len(speak_output)}")
             self.logger.info(f"speak_output preview: {speak_output[:100]}...")
 
-            # Construir card con límites y sanitización
-            card_text = diagnostic.card_text or "Ver diagnóstico completo"
-            # Sanitizar para card también
+            # Construir card con limites y sanitizacion
+            card_text = diagnostic.card_text or "Ver diagnostico completo"
+            # Sanitizar para card tambien
             card_text = card_text.replace('&', 'y')
             if len(card_text) > 800:
                 card_text = card_text[:797] + "..."
 
             card_title = diagnostic.card_title[:
-                                               100] if diagnostic.card_title else "Diagnóstico"
+                                               100] if diagnostic.card_title else "Diagnostico"
 
             try:
                 card = SimpleCard(
@@ -351,17 +351,17 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 )
             except Exception as card_error:
                 self.logger.error(f"Error creating card: {card_error}")
-                # Fallback: card simple sin contenido problemático
+                # Fallback: card simple sin contenido problematico
                 card = SimpleCard(
-                    title="Diagnóstico",
-                    content="Configuración guardada. Tu error ha sido diagnosticado."
+                    title="Diagnostico",
+                    content="Configuracion guardada. Tu error ha sido diagnosticado."
                 )
 
             return (
                 handler_input.response_builder
                 .speak(speak_output)
                 .set_card(card)
-                .ask("¿Quieres saber por qué ocurre esto o necesitas más soluciones?")
+                .ask("¿Quieres saber por que ocurre esto o necesitas mas soluciones?")
                 .response
             )
 
@@ -400,7 +400,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
             if alias in value_lower or value_lower in alias:
                 return canonical, True
 
-        # No se reconoce - valor inválido
+        # No se reconoce - valor invalido
         self.logger.warning(
             f"Invalid {field_name} value: '{value}'",
             extra={'value': value, 'field': field_name}
@@ -409,8 +409,8 @@ class SetProfileIntentHandler(BaseIntentHandler):
 
     def _normalize_value(self, value: str, aliases: Dict[str, str]) -> Optional[str]:
         """
-        Normaliza un valor usando el diccionario de aliases (sin validación estricta).
-        Mantiene compatibilidad con código legacy.
+        Normaliza un valor usando el diccionario de aliases (sin validacion estricta).
+        Mantiene compatibilidad con codigo legacy.
 
         Args:
             value: Valor raw del slot
@@ -468,14 +468,14 @@ class SetProfileIntentHandler(BaseIntentHandler):
         changed_fields = self._get_changed_fields(old_profile, new_profile)
         is_first_config = not old_profile.is_configured
 
-        # Construir mensaje según cambios
+        # Construir mensaje segun cambios
         if not changed_fields and not is_first_config:
             speak_output = (
                 "Tu perfil ya tenia esos valores. "
                 "No se hicieron cambios."
             )
         elif is_first_config:
-            # Primera configuración
+            # Primera configuracion
             os_val = self._get_field_value(new_profile, 'os')
             pm_val = self._get_field_value(new_profile, 'pm')
 
@@ -624,11 +624,11 @@ class SetProfileIntentHandler(BaseIntentHandler):
 
             speak_output = (
                 f"Actualmente usas {os_val}, {pm_val} y {editor_val}. "
-                "¿Qué quieres cambiar? Por ejemplo, di: uso windows y conda."
+                "¿Que quieres cambiar? Por ejemplo, di: uso windows y conda."
             )
         else:
             speak_output = (
-                "Para configurar tu perfil, dime qué sistema operativo "
+                "Para configurar tu perfil, dime que sistema operativo "
                 "y gestor de paquetes usas. "
                 "Por ejemplo: uso Windows y pip, o uso Linux con conda."
             )

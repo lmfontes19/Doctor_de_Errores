@@ -20,11 +20,11 @@ Patterns:
 from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
-from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic
-from utils import get_logger, truncate_text
+from utils import get_logger, truncate_text, sanitize_ssml_text
+from core.response_builder import AlexaResponseBuilder
 
 
 class WhyIntentHandler(BaseIntentHandler):
@@ -119,8 +119,10 @@ class WhyIntentHandler(BaseIntentHandler):
         error_type = diagnostic.error_type
         explanation = diagnostic.explanation
 
-        # Construir texto de voz (simplificado)
-        voice_text = self._build_voice_explanation(error_type, explanation)
+        # Sanitizar y construir texto de voz (simplificado)
+        safe_explanation = sanitize_ssml_text(explanation or "")
+        voice_text = self._build_voice_explanation(
+            error_type, safe_explanation)
 
         # Agregar prompt para siguiente accion
         voice_text += (
@@ -132,14 +134,12 @@ class WhyIntentHandler(BaseIntentHandler):
         card_title = f"Por que ocurre: {error_type}"
         card_text = self._build_detailed_card(diagnostic)
 
-        card = SimpleCard(title=card_title, content=card_text)
-
         return (
-            handler_input.response_builder
+            AlexaResponseBuilder(handler_input)
             .speak(voice_text)
-            .set_card(card)
+            .simple_card(card_title, card_text)
             .ask("¿Necesitas algo mas?")
-            .response
+            .build()
         )
 
     def _build_voice_explanation(
@@ -254,15 +254,17 @@ class WhyIntentHandler(BaseIntentHandler):
         self.logger.warning("WhyIntent called without previous diagnostic")
 
         speak_output = (
-            "No hay ningun error diagnosticado todavia. "
-            "Primero dime que error estas teniendo. "
-            "Por ejemplo: tengo un error module not found."
+            "Primero necesito diagnosticar un error para explicarte por que ocurre. "
+            "¿Que error estas teniendo? "
+            "Por ejemplo: tengo un error syntax error, o module not found."
         )
+
+        reprompt = "Dime que mensaje de error estas viendo."
 
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .ask(speak_output)
+            .ask(reprompt)
             .response
         )
 
@@ -304,12 +306,10 @@ class WhyIntentHandler(BaseIntentHandler):
             "- Di 'tengo un error...' para diagnosticar otro problema"
         )
 
-        card = SimpleCard(title=card_title, content=card_text)
-
         return (
-            handler_input.response_builder
+            AlexaResponseBuilder(handler_input)
             .speak(speak_output)
-            .set_card(card)
+            .simple_card(card_title, card_text)
             .ask("¿Necesitas algo mas?")
-            .response
+            .build()
         )

@@ -20,12 +20,11 @@ Patterns:
 from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
-from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler, require_profile
 from models import Diagnostic, UserProfile, DiagnosticSource
-from utils import get_logger, truncate_text
-from core.response_builder import diagnostic_response
+from utils import get_logger, truncate_text, sanitize_ssml_text
+from core.response_builder import AlexaResponseBuilder
 from services.kb_service import kb_service
 from services.ai_client import ai_service
 from services.storage import storage_service
@@ -262,8 +261,6 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         Construye la respuesta de Alexa con el diagnostico.
 
-        TODO: Usar ResponseBuilder cuando este implementado.
-
         Args:
             handler_input: Input del request
             diagnostic: Diagnostico generado
@@ -272,9 +269,10 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Returns:
             Response de Alexa con voz y card
         """
-        # Truncar texto de voz si es necesario
+        # Sanitizar y truncar texto de voz
+        voice_text = sanitize_ssml_text(diagnostic.voice_text or "")
         voice_text = truncate_text(
-            diagnostic.voice_text,
+            voice_text,
             max_length=self.MAX_VOICE_LENGTH
         )
 
@@ -290,26 +288,16 @@ class DiagnoseIntentHandler(BaseIntentHandler):
             source=diagnostic.source
         )
 
-        # Construir respuesta
-        # TODO: Usar ResponseBuilder pattern cuando este listo
-        # return self.response_builder
-        #     .speak(voice_text)
-        #     .card(diagnostic.card_title, diagnostic.card_text)
-        #     .reprompt("Necesitas algo mas?")
-        #     .build()
+        # Sanitizar card content tambien
+        card_content = sanitize_ssml_text(diagnostic.card_text or "")
 
-        # Por ahora, usar el builder basico de ask_sdk
-        card = SimpleCard(
-            title=diagnostic.card_title,
-            content=diagnostic.card_text
-        )
-
+        # Usar ResponseBuilder pattern
         return (
-            handler_input.response_builder
+            AlexaResponseBuilder(handler_input)
             .speak(voice_text)
-            .set_card(card)
+            .simple_card(diagnostic.card_title, card_content)
             .ask("Necesitas algo mas?")
-            .response
+            .build()
         )
 
     def _handle_missing_error(self, handler_input: HandlerInput) -> Response:
@@ -325,14 +313,19 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         self.logger.warning("DiagnoseIntent called without errorText slot")
 
         speak_output = (
-            "No escuche bien el error. "
-            "Por favor, dime que error estas teniendo. "
-            "Por ejemplo: tengo un error module not found."
+            "Claro, puedo ayudarte con tu codigo. "
+            "¿Que error estas viendo? "
+            "Por ejemplo, puedes decir: tengo un error module not found, "
+            "o syntax error, o mi codigo no compila."
+        )
+
+        reprompt = (
+            "¿Que mensaje de error aparece cuando ejecutas tu codigo?"
         )
 
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .ask(speak_output)
+            .ask(reprompt)
             .response
         )

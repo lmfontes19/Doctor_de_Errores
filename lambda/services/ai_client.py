@@ -30,17 +30,14 @@ class AIProvider(Enum):
 
 class AIClientError(Exception):
     """Excepcion base para errores de cliente AI."""
-    pass
 
 
 class AIProviderUnavailable(AIClientError):
     """Provider de IA no disponible."""
-    pass
 
 
 class AIResponseParseError(AIClientError):
     """Error parseando respuesta de IA."""
-    pass
 
 
 class BaseAIClient(ABC):
@@ -71,7 +68,6 @@ class BaseAIClient(ABC):
         Returns:
             Diagnostic generado o None si falla
         """
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -81,7 +77,6 @@ class BaseAIClient(ABC):
         Returns:
             True si esta disponible
         """
-        pass
 
     def _build_prompt(
         self,

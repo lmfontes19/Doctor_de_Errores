@@ -62,7 +62,6 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         Returns:
             str: Nombre del intent (ej: "DiagnoseIntent")
         """
-        pass
 
     def can_handle(self, handler_input: HandlerInput) -> bool:
         """
@@ -123,7 +122,6 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         Returns:
             Response: Respuesta para Alexa
         """
-        pass
 
     # ========================================================================
     # Metodos de Utilidad para Slots
@@ -603,12 +601,6 @@ def require_profile(func):
     Decorador que asegura que el usuario tenga un perfil configurado.
 
     Si no tiene perfil, solicita al usuario que lo configure.
-
-    Usage:
-        @require_profile
-        def handle_intent(self, handler_input):
-            # Este codigo solo se ejecuta si hay perfil
-            pass
     """
 
     def wrapper(self, handler_input: HandlerInput) -> Response:
@@ -650,12 +642,6 @@ def log_execution_time(func):
     Decorador que registra el tiempo de ejecucion de un handler.
 
     Usa el singleton LoggerManager para logging consistente.
-
-    Usage:
-        @log_execution_time
-        def handle_intent(self, handler_input):
-            # Tu codigo aqui
-            pass
     """
     import time
 

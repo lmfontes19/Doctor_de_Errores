@@ -98,7 +98,7 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         user_profile = self.get_user_profile(handler_input)
 
         self.logger.info(
-            f"Processing diagnostic request",
+            "Processing diagnostic request",
             extra={
                 'error_text': error_text[:50],
                 'user_os': user_profile.os.value
@@ -149,7 +149,7 @@ class DiagnoseIntentHandler(BaseIntentHandler):
 
         if kb_result and kb_result.confidence >= self.CONFIDENCE_THRESHOLD:
             self.logger.info(
-                f"KB match found",
+                "KB match found",
                 extra={
                     'confidence': kb_result.confidence,
                     'error_type': kb_result.error_type
@@ -225,10 +225,10 @@ class DiagnoseIntentHandler(BaseIntentHandler):
                     f"(source: {diagnostic.source})"
                 )
                 return diagnostic
-            else:
-                # Fallback: diagnostico generico si AI falla
-                self.logger.warning("AI service returned None, using fallback")
-                return self._create_fallback_diagnostic(user_profile)
+
+            # Fallback: diagnostico generico si AI falla
+            self.logger.warning("AI service returned None, using fallback")
+            return self._create_fallback_diagnostic(user_profile)
 
         except Exception as e:
             self.logger.error(f"AI service failed: {e}", exc_info=True)

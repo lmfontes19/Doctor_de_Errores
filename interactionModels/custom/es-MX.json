@@ -56,9 +56,7 @@
           "name": "LaunchIntent",
           "samples": [
             "abre doctor de errores",
-            "inicia doctor de errores",
-            "quiero diagnosticar un error",
-            "ayúdame con un error"
+            "inicia doctor de errores"
           ]
         },
         {
@@ -71,6 +69,7 @@
           "name": "DiagnoseIntent",
           "samples": [
             "tengo un error {errorText}",
+            "ahora diagnostica {errorText}",
             "diagnostica {errorText}",
             "me está fallando {errorText}",
             "tengo problema con {errorText}",
@@ -94,14 +93,21 @@
             "siguiente paso",
             "quiero más detalles",
             "dame más",
+            "da me más",
             "más soluciones",
             "siguiente",
             "otra solución",
             "qué más puedo hacer",
             "dame otra",
+            "da me otra",
             "más opciones",
             "continúa",
-            "sigue"
+            "sigue",
+            "otra",
+            "más",
+            "dame la siguiente",
+            "siguiente solución",
+            "otra más"
           ]
         },
         {

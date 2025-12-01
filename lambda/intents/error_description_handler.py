@@ -20,7 +20,6 @@ from ask_sdk_core.utils import is_request_type
 from ask_sdk_model import Response
 from ask_sdk_model.intent import Intent
 
-from intents.diagnose_intent import DiagnoseIntentHandler
 from utils import get_logger
 
 
@@ -205,7 +204,6 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
 
     def __init__(self):
         self.logger = get_logger(__name__)
-        self.diagnose_handler = DiagnoseIntentHandler()
 
     def can_handle(self, handler_input: HandlerInput) -> bool:
         """Verifica si debe manejar este request."""
@@ -242,8 +240,10 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
             extraction_strategy = ErrorTextExtractionStrategy(handler_input)
             error_text = extraction_strategy.extract_error_text(intent)
 
+            slot_info = list(intent.slots.keys()) if (
+                intent.slots and hasattr(intent.slots, 'keys')) else []
             self.logger.info(
-                f"Intent name: {intent.name}, Slots: {list(intent.slots.keys()) if intent.slots else []}")
+                f"Intent name: {intent.name}, Slots: {slot_info}")
 
         if not error_text:
             self.logger.warning(
@@ -252,6 +252,7 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
 
         self.logger.info(f"Extracted error description: {error_text[:50]}")
 
+        from intents.diagnose_intent import DiagnoseIntentHandler
         from ask_sdk_model import Slot, Intent as AlexaIntent
 
         new_intent = AlexaIntent(
@@ -268,7 +269,9 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
 
         request.intent = new_intent
 
-        return self.diagnose_handler.handle(handler_input)
+        # Crear instancia del handler y delegar
+        diagnose_handler = DiagnoseIntentHandler()
+        return diagnose_handler.handle(handler_input)
 
     def _request_clarification(self, handler_input: HandlerInput) -> Response:
         """

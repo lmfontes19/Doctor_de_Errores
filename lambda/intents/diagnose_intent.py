@@ -312,6 +312,9 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         self.logger.warning("DiagnoseIntent called without errorText slot")
 
+        session_attr = handler_input.attributes_manager.session_attributes
+        session_attr['awaiting_error_description'] = True
+
         speak_output = (
             "Claro, puedo ayudarte con tu codigo. "
             "¿Que error estas viendo? "

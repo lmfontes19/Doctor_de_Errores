@@ -32,15 +32,16 @@ from intents.more_intent import MoreIntentHandler
 from intents.send_card_intent import SendCardIntentHandler
 from intents.why_intent import WhyIntentHandler
 from intents.set_profile_intent import SetProfileIntentHandler
+from intents.error_description_handler import ErrorDescriptionHandler
 
 # ============================================================================
-# Inicialización del Logger Centralizado
+# Inicializacion del Logger Centralizado
 # ============================================================================
-# Inicializar el singleton al cargar el módulo
+# Inicializar el singleton al cargar el modulo
 logger_manager = get_logger_manager()
 logger = get_logger(__name__)
 
-# Configurar nivel de logging (ajustar según environment)
+# Configurar nivel de logging (ajustar segun environment)
 logger_manager.set_level(logging.INFO)
 
 logger.info("Doctor de Errores Skill - Lambda Function loaded")
@@ -216,6 +217,7 @@ for interceptor in RECOMMENDED_REQUEST_INTERCEPTORS:
 
 # Registrar handlers de intents personalizados
 sb.add_request_handler(LaunchRequestHandler())
+sb.add_request_handler(ErrorDescriptionHandler())
 sb.add_request_handler(DiagnoseIntentHandler())
 sb.add_request_handler(MoreIntentHandler())
 sb.add_request_handler(SendCardIntentHandler())

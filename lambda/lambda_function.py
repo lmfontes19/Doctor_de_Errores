@@ -53,7 +53,12 @@ class LaunchRequestHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
 
-        return ask_utils.is_request_type("LaunchRequest")(handler_input)
+        is_launch_request = ask_utils.is_request_type(
+            "LaunchRequest")(handler_input)
+        is_launch_intent = ask_utils.is_intent_name("LaunchIntent")(
+            handler_input) if ask_utils.is_request_type("IntentRequest")(handler_input) else False
+
+        return is_launch_request or is_launch_intent
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response

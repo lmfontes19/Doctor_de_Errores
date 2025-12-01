@@ -3,7 +3,7 @@ Este modulo proporciona clases base y utilidades comunes para todos los
 handlers de intents de la skill Doctor de Errores.
 
 Note:
-    LoggerManager ahora está centralizado en utils.py para ser accesible
+    LoggerManager ahora esta centralizado en utils.py para ser accesible
     por todos los modulos sin riesgo de dependencias circulares.
 """
 
@@ -24,9 +24,52 @@ from ask_sdk_core.utils import is_intent_name, get_slot_value
 # Importaciones de modelos
 from models import UserProfile, Diagnostic, SessionState
 
-# Importaciones locales (se crearán despues)
+# Importaciones locales (se crearan despues)
 # from core.response_builder import ResponseBuilder
 # from services.storage import StorageService
+
+
+# ============================================================================
+# Funciones Helper Independientes
+# ============================================================================
+
+def get_user_profile_from_session(handler_input: HandlerInput) -> UserProfile:
+    """
+    Funcion helper para obtener perfil del usuario desde session attributes.
+
+    Esta funcion estatica puede ser usada por cualquier handler sin necesidad
+    de instanciar BaseIntentHandler.
+
+    Args:
+        handler_input: Input del request
+
+    Returns:
+        UserProfile: Perfil del usuario (usa default si no existe)
+    """
+    logger = get_logger(__name__)
+
+    # Intentar obtener de session attributes (cache)
+    session_attr = handler_input.attributes_manager.session_attributes
+    profile_dict = session_attr.get('user_profile')
+
+    if profile_dict:
+        logger.info("Profile loaded from session cache")
+        return UserProfile.from_dict(profile_dict)
+
+    # TODO: Implementar carga desde DynamoDB cuando StorageService este listo
+    # user_id = handler_input.request_envelope.session.user.user_id
+    # storage_service = StorageService()
+    # profile_dict = storage_service.get_profile(user_id)
+    #
+    # if profile_dict:
+    #     profile = UserProfile.from_dict(profile_dict)
+    #     # Cachear en session
+    #     session_attr['user_profile'] = profile.to_dict()
+    #     return profile
+
+    # Retornar perfil por defecto
+    logger.info("Using default profile")
+    return UserProfile()  # Usa defaults: linux, pip, vscode
 
 
 # ============================================================================
@@ -277,28 +320,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         Returns:
             UserProfile: Perfil del usuario (nunca None, usa default si no existe)
         """
-        # Intentar obtener de session attributes (cache)
-        profile_dict = self.get_session_attribute(
-            handler_input, 'user_profile')
-
-        if profile_dict:
-            self.logger.info("Profile loaded from session cache")
-            return UserProfile.from_dict(profile_dict)
-
-        # TODO: Implementar carga desde DynamoDB cuando StorageService este listo
-        # user_id = self.get_user_id(handler_input)
-        # storage_service = StorageService()
-        # profile_dict = storage_service.get_profile(user_id)
-        #
-        # if profile_dict:
-        #     profile = UserProfile.from_dict(profile_dict)
-        #     # Cachear en session
-        #     self.set_session_attribute(handler_input, 'user_profile', profile.to_dict())
-        #     return profile
-
-        # Retornar perfil por defecto
-        self.logger.info("Using default profile")
-        return self._get_default_profile()
+        return get_user_profile_from_session(handler_input)
 
     def save_user_profile(
         self,
@@ -617,7 +639,8 @@ def require_profile(func):
                     self.set_session_attribute(
                         handler_input, 'pending_error_text', error_text)
             except Exception as e:
-                self.logger.warning(f"Error getting pending error text: {str(e)}")
+                self.logger.warning(
+                    f"Error getting pending error text: {str(e)}")
 
             speak_output = (
                 "Primero necesito que configures tu perfil. "

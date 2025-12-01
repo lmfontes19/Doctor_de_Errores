@@ -52,7 +52,16 @@
             "diagnostica {errorText}",
             "me está fallando {errorText}",
             "tengo problema con {errorText}",
-            "ayúdame a resolver {errorText}"
+            "ayúdame a resolver {errorText}",
+            "tengo un problema con mi código",
+            "mi código no funciona",
+            "hay un error en mi código",
+            "algo anda mal con mi código",
+            "necesito ayuda con mi código",
+            "mi programa tiene un error",
+            "mi aplicación falla",
+            "tengo un bug",
+            "hay un bug en mi código"
           ]
         },
         {
@@ -61,7 +70,16 @@
             "dame otra opción",
             "muéstrame más soluciones",
             "siguiente paso",
-            "quiero más detalles"
+            "quiero más detalles",
+            "dame más",
+            "más soluciones",
+            "siguiente",
+            "otra solución",
+            "qué más puedo hacer",
+            "dame otra",
+            "más opciones",
+            "continúa",
+            "sigue"
           ]
         },
         {
@@ -74,7 +92,16 @@
             "explícame la causa",
             "explícame por qué",
             "dime por qué ocurre",
-            "dime la razón"
+            "dime la razón",
+            "explícame más",
+            "dame más detalles",
+            "detalla más",
+            "quiero entender mejor",
+            "cuál es la razón",
+            "por qué pasa",
+            "explícame esto",
+            "dame más explicación",
+            "explícame a detalle"
           ]
         },
         {

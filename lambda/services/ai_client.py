@@ -12,9 +12,11 @@ Patterns:
 """
 
 import json
+import boto3
 from typing import Optional, Dict, Any, List
 from enum import Enum
 from abc import ABC, abstractmethod
+from openai import OpenAI
 
 from models import Diagnostic, UserProfile, ErrorType, DiagnosticSource
 from core.factories import DiagnosticFactory
@@ -93,30 +95,22 @@ class BaseAIClient(ABC):
         Returns:
             Prompt formateado
         """
-        return f"""Eres un asistente experto en Python que diagnostica errores de programacion.
+        os_val = user_profile.os.value if hasattr(
+            user_profile.os, 'value') else str(user_profile.os)
+        pm_val = user_profile.package_manager.value if hasattr(
+            user_profile.package_manager, 'value') else str(user_profile.package_manager)
 
-Error reportado por el usuario:
-{error_text}
+        return f"""Diagnostica este error Python: {error_text}
 
-Contexto del usuario:
-- Sistema operativo: {user_profile.os}
-- Gestor de paquetes: {user_profile.package_manager}
-- Editor: {user_profile.editor}
+Usuario: {os_val}, {pm_val}
 
-Proporciona un diagnostico estructurado en JSON con el siguiente formato:
+Responde SOLO con JSON:
 {{
-    "error_type": "tipo de error (ej: ModuleNotFoundError, SyntaxError)",
-    "voice_text": "Explicacion breve para voz (2-3 oraciones)",
-    "solutions": [
-        "Solucion 1 especifica para {user_profile.os} y {user_profile.package_manager}",
-        "Solucion 2",
-        "Solucion 3"
-    ],
-    "explanation": "Explicacion tecnica detallada del error",
-    "common_causes": [
-        "Causa comun 1",
-        "Causa comun 2"
-    ]
+    "error_type": "TipoError",
+    "voice_text": "Explicacion breve (2 oraciones)",
+    "solutions": ["Solucion 1 para {os_val} con {pm_val}", "Solucion 2"],
+    "explanation": "Explicacion tecnica",
+    "common_causes": ["Causa 1", "Causa 2"]
 }}
 
 Importante:
@@ -201,7 +195,6 @@ class BedrockAIClient(BaseAIClient):
         """
         if self._client is None:
             try:
-                import boto3
                 self._client = boto3.client(
                     service_name='bedrock-runtime',
                     region_name=self.region
@@ -294,7 +287,6 @@ class OpenAIClient(BaseAIClient):
         """Obtiene cliente de OpenAI (lazy initialization)."""
         if self._client is None:
             try:
-                from openai import OpenAI
                 if not self.api_key:
                     raise AIProviderUnavailable(
                         "OpenAI API key not configured")
@@ -333,11 +325,12 @@ class OpenAIClient(BaseAIClient):
                 model=self.model,
                 messages=[
                     {"role": "system",
-                        "content": "Eres un experto en Python que diagnostica errores."},
+                        "content": "Experto Python. JSON conciso."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                max_tokens=1000
+                temperature=0.1,
+                max_tokens=300,
+                timeout=6
             )
 
             # Extraer respuesta
@@ -352,6 +345,9 @@ class OpenAIClient(BaseAIClient):
 
         except AIClientError:
             raise
+        except TimeoutError as e:
+            self.logger.warning(f"OpenAI timeout after 7s: {e}")
+            raise AIProviderUnavailable("OpenAI timeout")
         except Exception as e:
             self.logger.error(f"OpenAI error: {e}", exc_info=True)
             raise AIProviderUnavailable(f"OpenAI failed: {e}")
@@ -359,9 +355,9 @@ class OpenAIClient(BaseAIClient):
 
 class MockAIClient(BaseAIClient):
     """
-    Cliente mock para testing.
+    Cliente mock inteligente para fallback rápido.
 
-    Retorna respuestas predefinidas sin llamar a servicios reales.
+    Genera diagnósticos basados en patrones sin llamar a servicios externos.
     """
 
     def is_available(self) -> bool:

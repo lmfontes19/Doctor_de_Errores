@@ -288,17 +288,23 @@ class DiagnoseIntentHandler(BaseIntentHandler):
             source=diagnostic.source
         )
 
+        self.logger.info(f"Voice text to speak: '{voice_text[:100]}...'")
+        self.logger.info(f"Voice text length: {len(voice_text)} characters")
+
         # Sanitizar card content tambien
         card_content = sanitize_ssml_text(diagnostic.card_text or "")
 
         # Usar ResponseBuilder pattern
-        return (
+        response = (
             AlexaResponseBuilder(handler_input)
             .speak(voice_text)
             .simple_card(diagnostic.card_title, card_content)
-            .ask("Necesitas algo mas?")
+            .ask("¿Quieres saber más o necesitas ayuda con algo más?")
             .build()
         )
+
+        self.logger.info("Outgoing response for: IntentRequest")
+        return response
 
     def _handle_missing_error(self, handler_input: HandlerInput) -> Response:
         """

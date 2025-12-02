@@ -12,6 +12,7 @@ Patterns:
 from typing import Optional, Union
 from ask_sdk_model import Response
 from ask_sdk_model.ui import SimpleCard, StandardCard, Image
+from utils import get_logger
 
 
 class AlexaResponseBuilder:
@@ -204,10 +205,18 @@ class AlexaResponseBuilder:
         Returns:
             Response de Alexa SDK
         """
+        logger = get_logger("AlexaResponseBuilder")
+        logger.info(
+            f"Building response - speech: {bool(self._speech_text)}, reprompt: {bool(self._reprompt_text)}, end_session: {self._should_end_session}")
+
         if self._speech_text:
+            logger.info(f"Adding speech: '{self._speech_text[:100]}...'")
             self._response_builder.speak(self._speech_text)
+        else:
+            logger.warning("No speech text set!")
 
         if self._reprompt_text and not self._should_end_session:
+            logger.info(f"Adding reprompt: '{self._reprompt_text[:50]}...'")
             self._response_builder.ask(self._reprompt_text)
 
         if self._should_end_session:

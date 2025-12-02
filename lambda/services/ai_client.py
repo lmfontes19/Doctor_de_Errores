@@ -100,25 +100,17 @@ class BaseAIClient(ABC):
         pm_val = user_profile.package_manager.value if hasattr(
             user_profile.package_manager, 'value') else str(user_profile.package_manager)
 
-        return f"""Diagnostica este error Python: {error_text}
+        return f"""Error: {error_text}
+Sistema: {os_val}, Gestor: {pm_val}
 
-Usuario: {os_val}, {pm_val}
-
-Responde SOLO con JSON:
+Responde en JSON:
 {{
-    "error_type": "TipoError",
-    "voice_text": "Explicacion breve (2 oraciones)",
-    "solutions": ["Solucion 1 para {os_val} con {pm_val}", "Solucion 2"],
-    "explanation": "Explicacion tecnica",
-    "common_causes": ["Causa 1", "Causa 2"]
-}}
-
-Importante:
-- Las soluciones deben ser especificas para {user_profile.os} con {user_profile.package_manager}
-- Usa comandos reales y exactos
-- Se claro y conciso
-- Responde SOLO con el JSON, sin texto adicional
-"""
+"error_type": "NombreDelError",
+"voice_text": "Explicación clara del error en 2-3 oraciones que se pueda decir en voz alta",
+"solutions": ["Solución 1 específica con comando para {os_val} y {pm_val}", "Solución 2 alternativa"],
+"explanation": "Explicación técnica breve",
+"common_causes": ["Causa común 1", "Causa común 2"]
+}}"""
 
     def _parse_ai_response(
         self,
@@ -324,12 +316,18 @@ class OpenAIClient(BaseAIClient):
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system",
-                        "content": "Experto Python. JSON conciso."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "Eres un experto en diagnóstico de errores Python. Genera respuestas completas pero concisas en español. El campo voice_text debe tener 2-3 oraciones explicativas."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    },
                 ],
-                temperature=0.1,
-                max_tokens=300,
+                temperature=0.2,
+                max_tokens=350,
+                response_format={"type": "json_object"},
                 timeout=6
             )
 

@@ -5,6 +5,9 @@ ask-sdk-model
 # AWS Services
 boto3
 
+# HTTP client for Progressive Response API
+requests
+
 # Environment variables
 python-dotenv
 

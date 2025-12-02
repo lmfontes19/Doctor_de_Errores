@@ -207,14 +207,18 @@ class DiagnosticFactory:
         """
         personalized = []
 
+        pm_value = user_profile.package_manager.value if hasattr(user_profile.package_manager, 'value') else str(user_profile.package_manager)
+        os_value = user_profile.os.value if hasattr(user_profile.os, 'value') else str(user_profile.os)
+        editor_value = user_profile.editor.value if hasattr(user_profile.editor, 'value') else str(user_profile.editor)
+
         for solution in solutions:
             # Reemplazar placeholders
             personalized_solution = solution.replace(
-                '{pm}', user_profile.package_manager.value
+                '{pm}', pm_value
             ).replace(
-                '{os}', user_profile.os.value
+                '{os}', os_value
             ).replace(
-                '{editor}', user_profile.editor.value
+                '{editor}', editor_value
             )
             personalized.append(personalized_solution)
 

@@ -294,10 +294,14 @@ class OpenAIClient(BaseAIClient):
         """Obtiene cliente de OpenAI (lazy initialization)."""
         if self._client is None:
             try:
-                import openai
-                if self.api_key:
-                    openai.api_key = self.api_key
-                self._client = openai
+                from openai import OpenAI
+                if not self.api_key:
+                    raise AIProviderUnavailable(
+                        "OpenAI API key not configured")
+                self._client = OpenAI(api_key=self.api_key)
+            except ImportError as e:
+                self.logger.error(f"OpenAI library not installed: {e}")
+                raise AIProviderUnavailable("OpenAI library not available")
             except Exception as e:
                 self.logger.error(f"Failed to create OpenAI client: {e}")
                 raise AIProviderUnavailable("OpenAI not available")
@@ -307,6 +311,8 @@ class OpenAIClient(BaseAIClient):
     def is_available(self) -> bool:
         """Verifica disponibilidad de OpenAI."""
         try:
+            if not self.api_key:
+                return False
             self._get_client()
             return True
         except Exception:
@@ -323,7 +329,7 @@ class OpenAIClient(BaseAIClient):
             prompt = self._build_prompt(error_text, user_profile)
 
             # Invocar modelo
-            response = client.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system",
@@ -357,10 +363,6 @@ class MockAIClient(BaseAIClient):
 
     Retorna respuestas predefinidas sin llamar a servicios reales.
     """
-
-    def __init__(self):
-        """Inicializa cliente mock."""
-        super().__init__()
 
     def is_available(self) -> bool:
         """Mock siempre esta disponible."""
@@ -404,10 +406,12 @@ class AIService:
         if providers:
             self.providers = providers
         else:
-            # Configuracion por defecto: intentar Bedrock, luego mock
+            # Configuracion por defecto: intentar OpenAI, luego mock
+            from config.settings import OPENAI_API_KEY, OPENAI_MODEL
+
             self.providers = [
-                BedrockAIClient(),
-                MockAIClient()
+                OpenAIClient(api_key=OPENAI_API_KEY, model=OPENAI_MODEL),
+                MockAIClient(),
             ]
 
     def generate_diagnostic(

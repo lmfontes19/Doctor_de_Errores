@@ -32,13 +32,15 @@ Reducir el tiempo de resolucion de errores en entornos de desarrollo Python medi
 
 Este proyecto implementa multiples patrones de disenho para garantizar escalabilidad y mantenibilidad:
 
-|     Patron    |    Implementacion     |                   Proposito                  |
-|---------------|-----------------------|----------------------------------------------|
-| **Builder**   | 'response_builder.py' | Construccion fluida de respuestas SSML/Cards |
-| **Prototype** | 'prototype.py'        | Clonacion de plantillas de diagnostico       |
-| **Factory**   | 'factories.py'        | Estrategias segun tipo de error y entorno    |
-| **Decorator** | 'interceptors.py'     | Logging, cache, sanitizacion                 |
-| **Strategy**  | 'intents/*.py'        | Diferentes estrategias por tipo de error     |
+|       Patron      |           Implementacion           |                   Proposito                  |
+|-------------------|------------------------------------|----------------------------------------------|
+| **Builder**       | 'response_builder.py'              | Construccion fluida de respuestas SSML/Cards |
+| **Prototype**     | 'prototype.py'                     | Clonacion de plantillas de diagnostico       |
+| **Factory**       | 'factories.py'                     | Estrategias segun tipo de error y entorno    |
+| **Decorator**     | 'interceptors.py'                  | Logging, cache, sanitizacion                 |
+| **Strategy**      | 'solution_extractors.py'           | Extraccion de soluciones de KB               |
+| **State Machine** | 'error_description_handler.py'     | Gestion de dialogo en multiples pasos        |
+| **Template**      | 'intents/base.py'                  | Estructura comun para handlers               |
 
 Para mas detalles, consulta [docs/arquitectura.md](docs/arquitectura.md).
 
@@ -121,6 +123,42 @@ skill/
 4. Pide mas detalles: *"Dame otra opcion"*
 5. Explora causas: *"Por que pasa esto?"*
 6. Recibe los pasos en tu app: *"Envialo a mi telefono"*
+
+---
+
+## Flujo de Conversación
+
+### Flujo Básico (Una Paso)
+```
+Usuario: "Alexa, abre doctor de errores"
+Alexa:   "Bienvenido al Doctor de Errores..."
+
+Usuario: "diagnostica module not found"
+Alexa:   [Diagnóstico completo con soluciones]
+```
+
+### Flujo Conversacional (Dos Pasos)
+```
+Usuario: "tengo un problema con mi código"
+Alexa:   "¿Qué error estás viendo?"
+
+Usuario: "syntax error"
+Alexa:   [Diagnóstico completo]
+```
+
+**Implementación**: Usa un `ErrorDescriptionHandler` que intercepta respuestas cuando `awaiting_error_description=True` en session attributes, implementando un **State Machine Pattern** para gestionar el diálogo.
+
+### Flujo con Follow-ups
+```
+Usuario: "diagnostica syntax error"
+Alexa:   [Primera solución]
+
+Usuario: "explícame más"
+Alexa:   [Explicación técnica detallada]
+
+Usuario: "dame más soluciones"
+Alexa:   [Segunda solución]
+```
 
 ---
 

@@ -1,0 +1,35 @@
+@startuml C2-Container-DoctorDeErrores
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Diagrama de Contenedores (C2) - Doctor de Errores
+
+Person(developer, "Desarrollador", "Usuario que dicta errores a Alexa.")
+
+System_Ext(alexa, "Plataforma Alexa / ASK", "Routing de peticiones.", $sprite="alexa")
+
+System_Boundary(skill, "Skill Alexa: Doctor de Errores") {
+    Container(interactionModel, "Interaction Model (ASK)", "Alexa Interaction Model", "Intents, slots, invocation name.")
+    
+    Container(backend, "Backend Lambda", "Python / ASK SDK", "Handlers de intents, core, services.")
+    
+    Container(kb, "Base de Conocimiento", "JSON / S3", "Reglas por error y plantillas de respuesta.")
+    
+    Container(perfil, "Perfil Historial", "DynamoDB", "Perfiles de usuario, historial de diagnósticos y cache de IA (TTL 30 días).")
+    
+    Container(logs, "Logging", "CloudWatch", "Logs y métricas de la skill.")
+}
+
+System_Ext(iaService, "Servicio IA", "AWS Bedrock / OpenAI (LLM para fallback).", $sprite="aws")
+
+Rel(developer, alexa, "Voz (errores, preguntas)", "ASR")
+Rel(alexa, interactionModel, "Match de intents", "JSON")
+Rel(interactionModel, backend, "Invoca handlers", "JSON / Lambda invoke")
+
+Rel(backend, kb, "Lee (Reglas y plantillas de KB)", "JSON / S3")
+Rel(backend, perfil, "Lee/Escribe", "Perfil, sesiones, cache")
+Rel(backend, iaService, "Consulta fallback inteligente", "Prompt / respuesta")
+Rel(backend, logs, "Envía logs y métricas", "Eventos")
+Rel(perfil, backend, "Lee configuraciones", "DynamoDB queries")
+
+SHOW_LEGEND()
+@enduml

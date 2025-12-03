@@ -1,0 +1,72 @@
+@startuml C3-Component-DoctorDeErrores
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Diagrama de Componentes (C3) - Backend Lambda
+
+System_Ext(alexa, "Plataforma Alexa", "Routing de peticiones")
+
+Container_Boundary(backend, "Backend Lambda (Python / ASK SDK)") {
+    Component(utils, "Utils", "Funciones auxiliares", "Parsing de errores, normalización, logging helper.")
+    
+    Component(prototypes, "Prototypes", "Prototype Pattern", "Plantillas clonables de diagnósticos y mensajes.")
+    
+    Component(intentHandlers, "Intent Handlers", "Python / ASK SDK", "Launch, Diagnose, SetProfile, More, Why, SendCard, etc.")
+
+    ' Estrategias de diagnóstico (Strategy Pattern + Chain of Responsibility)
+    Component(strategies, "Diagnostic Strategies", "Strategy + Chain", "KnowledgeBaseStrategy → CachedAIStrategy → LiveAIStrategy")
+
+    ' Core components
+    Component(responseBuilder, "ResponseBuilder", "Builder Pattern", "Construye respuestas SSML + reprompt + cards.")
+
+    Component(factories, "Factories & Strategies", "Factory / Abstract Factory", "Selecciona estrategia según error, SO y entorno.")
+
+    Component(errorValidation, "ErrorValidation", "Facade + Strategy + Composite", "Validación basada en patrones (8 ErrorPattern + SOLID).")
+
+    ' Services
+    Component(kbService, "KBService", "Service", "Consulta reglas y plantillas en KB local (JSON/S3).")
+
+    Component(aiClient, "AIClient", "Service + Proxy", "Llama a Bedrock/OpenAI con cache, sanitización y lazy init.")
+
+    Component(storageService, "StorageService", "Service", "Acceso a DynamoDB para perfil de usuario, historial y cache de IA.")
+
+    Component(logging, "Logging", "CloudWatch", "Logs y métricas de la skill.")
+
+    ' Config
+    Component(config, "Config & KB", "settings.py / kb_templates.json", "Toggles, parámetros y base de conocimiento local.")
+}
+
+' External systems
+Container_Ext(kb, "Base de Conocimiento", "JSON / S3", "Reglas por error")
+Container_Ext(perfil, "Perfil Historial", "DynamoDB", "Perfiles, historial, cache")
+System_Ext(iaService, "Servicio IA", "AWS Bedrock / OpenAI (LLM)", "Fallback inteligente")
+
+' Relationships
+Rel(alexa, intentHandlers, "Match de intents", "JSON / Lambda invoke")
+
+Rel(intentHandlers, errorValidation, "Valida descripción", "Pattern matching")
+Rel(intentHandlers, strategies, "Solicita estrategia para error", "Error text + profile")
+Rel(intentHandlers, responseBuilder, "Construye respuestas con", "Fluent API")
+Rel(intentHandlers, storageService, "Lee/Escribe perfil e historial", "DynamoDB ops")
+
+Rel(strategies, kbService, "Lee (Reglas y plantillas de KB)", "Strategy 1: KB")
+Rel(strategies, storageService, "Lee/Escribe cache", "Strategy 2: AI Cache")
+Rel(strategies, aiClient, "Consulta fallback IA", "Strategy 3: Live AI")
+
+Rel(responseBuilder, prototypes, "Solicita estrategia para error", "Clone & customize")
+Rel(responseBuilder, factories, "Construye respuestas con", "Factory methods")
+
+Rel(factories, kbService, "Consulta reglas y plantillas en KB", "JSON queries")
+Rel(factories, prototypes, "Usa parámetros de KB y settings", "Template instantiation")
+
+Rel(aiClient, iaService, "Consulta fallback inteligente", "Prompt / respuesta")
+Rel(aiClient, storageService, "Cachea diagnósticos", "Save to cache")
+
+Rel(kbService, kb, "Lee (Reglas y plantillas de KB)", "JSON / S3")
+Rel(kbService, config, "Usa parámetros de KB y settings", "Settings")
+
+Rel(storageService, perfil, "Lee/Escribe", "DynamoDB queries")
+
+Rel(intentHandlers, logging, "Envía logs y métricas", "CloudWatch")
+
+SHOW_LEGEND()
+@enduml

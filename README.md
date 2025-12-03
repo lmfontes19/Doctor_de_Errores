@@ -334,6 +334,14 @@ Consulta [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) para:
 - **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** - Guía completa de testing
 - **[kb_templates.json](lambda/config/kb_templates.json)** - Base de conocimiento
 
+### Diagramas C4
+
+- **[C1 - Context Diagram](diagrams/c1-context.puml)** - Sistema en contexto (Desarrollador, Alexa, Servicios externos)
+- **[C2 - Container Diagram](diagrams/c2-container.puml)** - Contenedores (Interaction Model, Backend Lambda, DynamoDB, etc.)
+- **[C3 - Component Diagram](diagrams/c3-component.puml)** - Componentes internos (Strategies, Services, Handlers, Patterns)
+
+**Visualizar**: http://www.plantuml.com/plantuml/uml/ (copia el contenido del `.puml`)
+
 ---
 
 ## Autores

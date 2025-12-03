@@ -1,0 +1,26 @@
+@startuml C1-Context-DoctorDeErrores
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Diagrama de Contexto (C1) - Doctor de Errores
+
+Person(developer, "Desarrollador", "Usuario que programa en varios lenguajes y dicta errores a Alexa.")
+
+System(alexa, "Plataforma Alexa / ASK", "ASR, NLU, manejo de intents y routing a Lambda.", $sprite="alexa")
+
+System_Boundary(skill, "Skill Alexa: Doctor de Errores") {
+    System(doctorErrores, "Doctor de Errores", "Skill de Alexa para diagnosticar errores y proponer soluciones.")
+}
+
+System_Ext(ia, "Servicio IA", "AWS Bedrock / OpenAI para fallback inteligente.", $sprite="aws")
+System_Ext(storage, "Almacenamiento (DynamoDB/S3)", "Perfil de usuario, historial y cache de diagnósticos (30 días TTL).", $sprite="dynamodb")
+System_Ext(logging, "Logging / Monitoring", "CloudWatch u otro servicio de monitoreo.", $sprite="cloudwatch")
+
+Rel(developer, alexa, "Habla por voz", "Frases / mensajes de error")
+Rel(alexa, doctorErrores, "Invoca", "JSON requests")
+
+Rel(doctorErrores, ia, "Consulta cuando no hay respuesta local", "Prompt / contexto")
+Rel(doctorErrores, storage, "Lee/Escribe", "Perfil, historial, cache")
+Rel(doctorErrores, logging, "Envía métricas y logs", "Eventos")
+
+SHOW_LEGEND()
+@enduml

@@ -16,7 +16,7 @@ import re
 from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
 
-from models import Diagnostic, UserProfile, DiagnosticSource
+from models import Diagnostic, UserProfile
 from core.factories import DiagnosticFactory
 from utils import get_logger
 

@@ -17,13 +17,12 @@ Patterns:
 - Decorator (enriquece diagnostico con contexto educativo)
 """
 
-from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic
-from utils import get_logger, truncate_text, sanitize_ssml_text
+from utils import truncate_text, sanitize_ssml_text
 from core.response_builder import AlexaResponseBuilder
 
 
@@ -55,7 +54,11 @@ class WhyIntentHandler(BaseIntentHandler):
     """
 
     # Configuracion
-    MAX_VOICE_LENGTH = 300  # Caracteres maximos para voz
+    @property
+    def MAX_VOICE_LENGTH(self):
+        """Obtiene longitud maxima de voz desde settings."""
+        from config.settings import MAX_VOICE_LENGTH
+        return MAX_VOICE_LENGTH
 
     def __init__(self):
         """Inicializa el handler."""
@@ -88,7 +91,7 @@ class WhyIntentHandler(BaseIntentHandler):
             return self._handle_no_explanation(handler_input, last_diagnostic)
 
         self.logger.info(
-            f"Providing explanation",
+            "Providing explanation",
             extra={
                 'error_type': last_diagnostic.error_type,
                 'has_explanation': True
@@ -286,7 +289,7 @@ class WhyIntentHandler(BaseIntentHandler):
         error_type = diagnostic.error_type
 
         self.logger.warning(
-            f"Diagnostic has no explanation",
+            "Diagnostic has no explanation",
             extra={'error_type': error_type}
         )
 

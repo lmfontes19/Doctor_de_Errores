@@ -435,6 +435,64 @@ class SessionState:
         attrs['solution_index'] = self.solution_index
 
 
+# ============================================================================
+# Error Validation Constants
+# ============================================================================
+
+class ErrorValidation:
+    """
+    Constantes para validacion de descripciones de errores.
+
+    Centraliza las listas de keywords y frases vagas usadas para
+    validar que las descripciones de errores sean suficientemente
+    especificas antes de hacer peticiones a servicios externos (AI).
+    """
+
+    SPECIFIC_ERROR_KEYWORDS = [
+        'module not found', 'modulenotfounderror', 'importerror',
+        'syntax error', 'syntaxerror', 'invalid syntax',
+        'name error', 'nameerror', 'not defined',
+        'attribute error', 'attributeerror', 'has no attribute',
+        'type error', 'typeerror', 'wrong type',
+        'value error', 'valueerror',
+        'key error', 'keyerror',
+        'index error', 'indexerror', 'out of range',
+        'file not found', 'filenotfounderror',
+        'permission denied', 'permissionerror',
+        'indentation error', 'indentationerror',
+        'zero division', 'zerodivisionerror',
+        'recursion error', 'recursionerror',
+        'runtime error', 'runtimeerror',
+        'assertion error', 'assertionerror',
+        'keyboard interrupt', 'keyboardinterrupt',
+        'memory error', 'memoryerror',
+        'overflow error', 'overflowerror',
+        'unicode error', 'unicodeerror',
+        'os error', 'oserror',
+        'io error', 'ioerror',
+        'traceback'
+    ]
+
+    VAGUE_PHRASES = [
+        'muy específico', 'muy especifico', 'muy raro', 'muy extraño',
+        'algo malo', 'algo raro', 'algo extraño',
+        'no funciona', 'no sirve', 'no anda',
+        'no compila', 'no corre', 'no ejecuta',
+        'falla', 'problema', 'bug', 'issue',
+        'mi código', 'mi programa', 'mi script',
+        'mi aplicación', 'mi app',
+        'un error genérico', 'un error común',
+        'un error random', 'un error cualquiera'
+    ]
+
+    TOO_VAGUE_EXACT = [
+        'error', 'un error', '1 error',
+        'tengo error', 'hay error'
+    ]
+
+    MIN_LENGTH_WITHOUT_KEYWORDS = 15
+
+
 # Funciones de utilidad para backwards compatibility
 def user_profile_from_dict(data: Optional[Dict[str, Any]]) -> UserProfile:
     """Helper para crear UserProfile desde dict."""

@@ -245,7 +245,7 @@ class LoggerManager:
             source: Fuente del diagnostico (kb o ai)
         """
         self.info(
-            f"Diagnostic Generated",
+            "Diagnostic Generated",
             context={
                 'error_type': error_type,
                 'confidence': confidence,
@@ -292,65 +292,6 @@ def get_logger(name: str) -> logging.Logger:
         logger.info("Message")
     """
     return LoggerManager.get_instance().get_logger(name)
-
-
-# ============================================================================
-# Utilidades de AWS S3
-# ============================================================================
-
-def create_presigned_url(object_name: str, expiration: int = 60) -> Optional[str]:
-    """
-    Genera una URL pre-firmada para compartir un objeto S3.
-
-    Args:
-        object_name: Nombre del objeto en S3
-        expiration: Tiempo de expiracion en segundos (default: 60)
-
-    Returns:
-        Optional[str]: URL pre-firmada o None si hay error
-
-    Usage:
-        url = create_presigned_url('myfile.txt', expiration=120)
-    """
-    logger_mgr = get_logger_manager()
-
-    try:
-        s3_client = boto3.client(
-            's3',
-            region_name=os.environ.get('S3_PERSISTENCE_REGION'),
-            config=boto3.session.Config(
-                signature_version='s3v4',
-                s3={'addressing_style': 'path'}
-            )
-        )
-
-        bucket_name = os.environ.get('S3_PERSISTENCE_BUCKET')
-
-        response = s3_client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': bucket_name,
-                'Key': object_name
-            },
-            ExpiresIn=expiration
-        )
-
-        logger_mgr.debug(
-            "Presigned URL generated",
-            context={'object': object_name, 'expiration': expiration},
-            logger_name='s3'
-        )
-
-        return response
-
-    except ClientError as e:
-        logger_mgr.error(
-            f"Error generating presigned URL: {str(e)}",
-            exc_info=True,
-            context={'object': object_name},
-            logger_name='s3'
-        )
-        return None
 
 
 # ============================================================================

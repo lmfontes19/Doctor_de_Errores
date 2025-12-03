@@ -18,13 +18,12 @@ Patterns:
 - State (mantiene indice en sesion)
 """
 
-from typing import List, Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic
-from utils import get_logger, truncate_text, sanitize_ssml_text
+from utils import truncate_text, sanitize_ssml_text
 from core.response_builder import AlexaResponseBuilder
 
 
@@ -54,8 +53,17 @@ class MoreIntentHandler(BaseIntentHandler):
     """
 
     # Configuracion
-    MAX_VOICE_LENGTH = 300  # Caracteres maximos para voz
-    MAX_SOLUTIONS = 5       # Maximo de soluciones a ofrecer
+    @property
+    def MAX_VOICE_LENGTH(self):
+        """Obtiene longitud maxima de voz desde settings."""
+        from config.settings import MAX_VOICE_LENGTH
+        return MAX_VOICE_LENGTH
+
+    @property
+    def MAX_SOLUTIONS(self):
+        """Obtiene maximo de soluciones desde settings."""
+        from config.settings import MAX_SOLUTIONS
+        return MAX_SOLUTIONS
 
     def __init__(self):
         """Inicializa el handler."""
@@ -176,7 +184,7 @@ class MoreIntentHandler(BaseIntentHandler):
 
         # Log
         self.logger.debug(
-            f"Built solution response",
+            "Built solution response",
             extra={
                 'solution_number': current_number,
                 'total': total_solutions,
@@ -312,7 +320,7 @@ class MoreIntentHandler(BaseIntentHandler):
         total_solutions = diagnostic.get_solution_count()
 
         self.logger.info(
-            f"All solutions exhausted",
+            "All solutions exhausted",
             extra={
                 'error_type': error_type,
                 'total_shown': total_solutions

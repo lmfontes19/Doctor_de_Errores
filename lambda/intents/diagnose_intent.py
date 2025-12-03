@@ -22,8 +22,8 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from intents.base import BaseIntentHandler, require_profile
-from models import Diagnostic, UserProfile, DiagnosticSource
-from utils import get_logger, truncate_text, sanitize_ssml_text
+from models import Diagnostic, UserProfile, ErrorValidation
+from utils import truncate_text, sanitize_ssml_text
 from core.response_builder import AlexaResponseBuilder
 from services.kb_service import kb_service
 from services.ai_client import ai_service
@@ -56,10 +56,23 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         - errorText: Descripcion del error (AMAZON.SearchQuery)
     """
 
-    # Configuracion
-    CONFIDENCE_THRESHOLD = 0.70  # Umbral para KB match
-    MAX_VOICE_LENGTH = 300      # Caracteres maximos para voz
-    MAX_CARD_LENGTH = 1000      # Caracteres maximos para card
+    @property
+    def MAX_VOICE_LENGTH(self):
+        """Obtiene longitud maxima de voz desde settings."""
+        from config.settings import MAX_VOICE_LENGTH
+        return MAX_VOICE_LENGTH
+
+    @property
+    def MAX_CARD_LENGTH(self):
+        """Obtiene longitud maxima de card desde settings."""
+        from config.settings import MAX_CARD_LENGTH
+        return MAX_CARD_LENGTH
+
+    @property
+    def CONFIDENCE_THRESHOLD(self):
+        """Obtiene umbral de confianza desde settings."""
+        from config.settings import KB_CONFIDENCE_THRESHOLD
+        return KB_CONFIDENCE_THRESHOLD
 
     def __init__(self):
         """Inicializa el handler con servicios."""
@@ -93,6 +106,10 @@ class DiagnoseIntentHandler(BaseIntentHandler):
 
         if not error_text:
             return self._handle_missing_error(handler_input)
+
+        # Validar que el texto del error sea descriptivo
+        if not self._is_valid_error_description(error_text):
+            return self._handle_vague_error(handler_input, error_text)
 
         # Obtener perfil de usuario
         user_profile = self.get_user_profile(handler_input)
@@ -305,6 +322,101 @@ class DiagnoseIntentHandler(BaseIntentHandler):
 
         self.logger.info("Outgoing response for: IntentRequest")
         return response
+
+    def _is_valid_error_description(self, error_text: str) -> bool:
+        """
+        Valida que el texto del error sea suficientemente descriptivo.
+
+        Rechaza descripciones vagas como:
+        - "un error muy específico y raro"
+        - "un error"
+        - "algo malo"
+        - "no funciona"
+
+        Args:
+            error_text: Texto del error a validar
+
+        Returns:
+            bool: True si el error es suficientemente descriptivo
+        """
+        if not error_text or len(error_text.strip()) < 5:
+            return False
+
+        error_lower = error_text.lower().strip()
+
+        for vague in ErrorValidation.VAGUE_PHRASES:
+            if vague in error_lower:
+                has_very_specific = any(
+                    kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
+                )
+
+                if not has_very_specific:
+                    self.logger.warning(
+                        f"Vague error description rejected: {error_text[:50]}"
+                    )
+                    return False
+
+        if error_lower in ErrorValidation.TOO_VAGUE_EXACT:
+            return False
+
+        if len(error_text.strip()) < ErrorValidation.MIN_LENGTH_WITHOUT_KEYWORDS:
+            has_specific = any(
+                kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
+            )
+            if not has_specific:
+                self.logger.warning(
+                    f"Too short and not specific: {error_text[:50]}"
+                )
+                return False
+
+        has_specific = any(
+            kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
+        )
+        if not has_specific:
+            self.logger.warning(
+                f"No specific error keyword found: {error_text[:50]}"
+            )
+            return False
+
+        return True
+
+    def _handle_vague_error(self, handler_input: HandlerInput, error_text: str) -> Response:
+        """
+        Maneja descripciones de error vagas o poco útiles.
+
+        Args:
+            handler_input: Input del request
+            error_text: Texto vago proporcionado
+
+        Returns:
+            Response solicitando más detalles
+        """
+        self.logger.info(
+            "Vague error description provided",
+            extra={'error_text': error_text[:50]}
+        )
+
+        speak_output = (
+            "Entiendo que tienes un error, pero necesito mas detalles especificos. "
+            "¿Que mensaje de error exacto ves? "
+            "Por ejemplo: module not found error, syntax error en la linea 10, "
+            "name error nombre no definido, o file not found."
+        )
+
+        reprompt = (
+            "¿Cual es el mensaje de error especifico que aparece?"
+        )
+
+        # Mantener flag para capturar la respuesta
+        session_attr = handler_input.attributes_manager.session_attributes
+        session_attr['awaiting_error_description'] = True
+
+        return (
+            handler_input.response_builder
+            .speak(speak_output)
+            .ask(reprompt)
+            .response
+        )
 
     def _handle_missing_error(self, handler_input: HandlerInput) -> Response:
         """

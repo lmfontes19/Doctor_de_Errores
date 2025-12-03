@@ -21,10 +21,11 @@ from .ai_client import (
     MockAIClient,
     ai_service,
     generate_ai_diagnostic,
-    AIProvider,
     AIClientError,
     AIProviderUnavailable
 )
+
+from config.settings import AIProvider
 
 from .storage import (
     StorageService,

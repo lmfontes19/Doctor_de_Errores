@@ -15,11 +15,7 @@ from datetime import datetime
 from models import (
     Diagnostic,
     UserProfile,
-    ErrorType,
     DiagnosticSource,
-    OperatingSystem,
-    PackageManager,
-    Editor
 )
 from .solution_extractors import SolutionExtractionStrategy
 
@@ -207,9 +203,12 @@ class DiagnosticFactory:
         """
         personalized = []
 
-        pm_value = user_profile.package_manager.value if hasattr(user_profile.package_manager, 'value') else str(user_profile.package_manager)
-        os_value = user_profile.os.value if hasattr(user_profile.os, 'value') else str(user_profile.os)
-        editor_value = user_profile.editor.value if hasattr(user_profile.editor, 'value') else str(user_profile.editor)
+        pm_value = user_profile.package_manager.value if hasattr(
+            user_profile.package_manager, 'value') else str(user_profile.package_manager)
+        os_value = user_profile.os.value if hasattr(
+            user_profile.os, 'value') else str(user_profile.os)
+        editor_value = user_profile.editor.value if hasattr(
+            user_profile.editor, 'value') else str(user_profile.editor)
 
         for solution in solutions:
             # Reemplazar placeholders
@@ -251,8 +250,8 @@ class DiagnosticFactory:
                 f"Solucion: {first_solution} "
                 f"Tengo {num_more} soluciones mas disponibles."
             )
-        else:
-            return f"Detecte un {error_type}. Solucion: {first_solution}"
+
+        return f"Detecte un {error_type}. Solucion: {first_solution}"
 
     @staticmethod
     def _build_card_title(error_type: str) -> str:
@@ -506,13 +505,15 @@ class ResponseFactory:
         speak_output = (
             "Bienvenido al Doctor de Errores. "
             "Soy tu asistente para diagnosticar errores de Python. "
-            "Describe el error que estas teniendo y te ayudare a solucionarlo."
+            "Antes de comenzar, puedes configurar tu perfil diciendo, "
+            "por ejemplo: uso Windows y pip. "
+            "O puedes ir directamente a describir el error que estas teniendo."
         )
 
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .ask("¿Que error tienes?")
+            .ask("¿Que sistema operativo y gestor de paquetes usas, o que error tienes?")
             .response
         )
 

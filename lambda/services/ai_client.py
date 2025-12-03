@@ -14,20 +14,12 @@ Patterns:
 import json
 import boto3
 from typing import Optional, Dict, Any, List
-from enum import Enum
 from abc import ABC, abstractmethod
 from openai import OpenAI
 
-from models import Diagnostic, UserProfile, ErrorType, DiagnosticSource
+from models import Diagnostic, UserProfile, ErrorType
 from core.factories import DiagnosticFactory
 from utils import get_logger
-
-
-class AIProvider(Enum):
-    """Providers de IA soportados."""
-    BEDROCK = "bedrock"
-    OPENAI = "openai"
-    MOCK = "mock"  # Para testing
 
 
 class AIClientError(Exception):
@@ -212,13 +204,16 @@ class BedrockAIClient(BaseAIClient):
     ) -> Optional[Diagnostic]:
         """Genera diagnostico usando Bedrock."""
         try:
+            from config.settings import BEDROCK_MAX_TOKENS, BEDROCK_TEMPERATURE
+
             client = self._get_client()
             prompt = self._build_prompt(error_text, user_profile)
 
             # Construir request para Claude
             request_body = {
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1000,
+                "max_tokens": BEDROCK_MAX_TOKENS,
+                "temperature": BEDROCK_TEMPERATURE,
                 "messages": [
                     {
                         "role": "user",
@@ -309,6 +304,8 @@ class OpenAIClient(BaseAIClient):
     ) -> Optional[Diagnostic]:
         """Genera diagnostico usando OpenAI."""
         try:
+            from config.settings import OPENAI_MAX_TOKENS, OPENAI_TEMPERATURE
+
             client = self._get_client()
             prompt = self._build_prompt(error_text, user_profile)
 
@@ -325,8 +322,8 @@ class OpenAIClient(BaseAIClient):
                         "content": prompt
                     },
                 ],
-                temperature=0.2,
-                max_tokens=350,
+                temperature=OPENAI_TEMPERATURE,
+                max_tokens=OPENAI_MAX_TOKENS,
                 response_format={"type": "json_object"},
                 timeout=6
             )

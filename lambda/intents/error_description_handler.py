@@ -14,13 +14,12 @@ from abc import ABC, abstractmethod
 from typing import Optional
 import re
 
-from ask_sdk_core.dispatch_components import AbstractRequestHandler
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_core.utils import is_request_type
 from ask_sdk_model import Response
 from ask_sdk_model.intent import Intent
 
-from utils import get_logger
+from intents.base import BaseIntentHandler
 
 
 # Strategy Pattern: Extractores de Texto de Error
@@ -188,7 +187,7 @@ class ErrorTextExtractionStrategy:
 
 
 # Handler Principal
-class ErrorDescriptionHandler(AbstractRequestHandler):
+class ErrorDescriptionHandler(BaseIntentHandler):
     """
     Captura descripciones de errores en respuestas a preguntas abiertas.
 
@@ -200,36 +199,68 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
     Patterns:
     - State Machine: gestion de estado conversacional
     - Strategy: multiples estrategias de extraccion de texto
+
+    Note:
+        Este handler NO usa intent_name property porque maneja multiples intents
+        dinamicamente (cualquier intent cuando awaiting_error_description=True).
+        Por lo tanto, override can_handle() directamente.
     """
 
     def __init__(self):
-        self.logger = get_logger(__name__)
+        super().__init__()
+        self.logger.info("ErrorDescriptionHandler initialized")
+
+    @property
+    def intent_name(self) -> str:
+        """
+        No aplica - este handler maneja multiples intents dinamicamente.
+        Se mantiene por compatibilidad con BaseIntentHandler.
+        """
+        return "ErrorDescriptionHandler"
 
     def can_handle(self, handler_input: HandlerInput) -> bool:
-        """Verifica si debe manejar este request."""
-        session_attr = handler_input.attributes_manager.session_attributes
-        awaiting_error = session_attr.get('awaiting_error_description', False)
+        """
+        Verifica si debe manejar este request.
+
+        Override del metodo base porque este handler no se basa en un intent
+        especifico sino en el estado de la sesion.
+        """
+        awaiting_error = self.get_session_attribute(
+            handler_input, 'awaiting_error_description', False
+        )
 
         # Log para debugging
         if awaiting_error:
-            logger = get_logger(__name__)
             request = handler_input.request_envelope.request
             intent_name = request.intent.name if hasattr(
                 request, 'intent') else 'N/A'
-            logger.info(
-                f"ErrorDescriptionHandler active - Intent: {intent_name}")
+            self.logger.info(
+                f"ErrorDescriptionHandler active - Intent: {intent_name}"
+            )
 
         if not awaiting_error:
             return False
 
         return is_request_type("IntentRequest")(handler_input)
 
-    def handle(self, handler_input: HandlerInput) -> Response:
-        """Procesa la descripcion del error usando Strategy Pattern."""
+    def handle_intent(self, handler_input: HandlerInput) -> Response:
+        """
+        Implementacion requerida por BaseIntentHandler.
+        Coordina la extraccion de texto de error y delegacion.
+        """
+        return self._process_error_description(handler_input)
+
+    def _process_error_description(self, handler_input: HandlerInput) -> Response:
+        """
+        Procesa la descripcion del error usando Strategy Pattern.
+
+        Responsabilidad: Coordinar extraccion de texto y delegacion a DiagnoseIntent.
+        """
         self.logger.info("Capturing error description from user response")
 
-        session_attr = handler_input.attributes_manager.session_attributes
-        session_attr['awaiting_error_description'] = False
+        # Limpiar flag de estado
+        self.set_session_attribute(
+            handler_input, 'awaiting_error_description', False)
 
         request = handler_input.request_envelope.request
         intent = request.intent if hasattr(request, 'intent') else None
@@ -243,21 +274,46 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
             slot_info = list(intent.slots.keys()) if (
                 intent.slots and hasattr(intent.slots, 'keys')) else []
             self.logger.info(
-                f"Intent name: {intent.name}, Slots: {slot_info}")
+                f"Intent name: {intent.name}, Slots: {slot_info}"
+            )
 
         if not error_text:
             self.logger.warning(
-                "Could not extract error text, requesting clarification")
+                "Could not extract error text, requesting clarification"
+            )
             return self._request_clarification(handler_input)
 
         self.logger.info(f"Extracted error description: {error_text[:50]}")
 
+        # Delegar a DiagnoseIntent
+        return self._delegate_to_diagnose_intent(handler_input, intent, error_text)
+
+    def _delegate_to_diagnose_intent(
+        self,
+        handler_input: HandlerInput,
+        original_intent: Optional[Intent],
+        error_text: str
+    ) -> Response:
+        """
+        Crea un DiagnoseIntent sintetico y delega el procesamiento.
+
+        Responsabilidad: Transformacion de intent y delegacion.
+
+        Args:
+            handler_input: Input del request
+            original_intent: Intent original capturado
+            error_text: Texto del error extraido
+
+        Returns:
+            Response del DiagnoseIntentHandler
+        """
         from intents.diagnose_intent import DiagnoseIntentHandler
         from ask_sdk_model import Slot, Intent as AlexaIntent
 
+        # Crear intent sintetico para DiagnoseIntent
         new_intent = AlexaIntent(
             name='DiagnoseIntent',
-            confirmation_status=intent.confirmation_status if intent else None,
+            confirmation_status=original_intent.confirmation_status if original_intent else None,
             slots={
                 'errorText': Slot(
                     name='errorText',
@@ -267,15 +323,19 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
             }
         )
 
+        # Reemplazar intent en el request
+        request = handler_input.request_envelope.request
         request.intent = new_intent
 
-        # Crear instancia del handler y delegar
+        # Delegar al handler de diagnostico
         diagnose_handler = DiagnoseIntentHandler()
         return diagnose_handler.handle(handler_input)
 
     def _request_clarification(self, handler_input: HandlerInput) -> Response:
         """
         Solicita aclaracion cuando no se pudo extraer el error.
+
+        Responsabilidad: Construccion de respuesta de aclaracion.
 
         Args:
             handler_input: Input del request
@@ -292,8 +352,9 @@ class ErrorDescriptionHandler(AbstractRequestHandler):
 
         reprompt = "¿Que mensaje de error ves?"
 
-        session_attr = handler_input.attributes_manager.session_attributes
-        session_attr['awaiting_error_description'] = True
+        # Mantener flag activa para siguiente intento
+        self.set_session_attribute(
+            handler_input, 'awaiting_error_description', True)
 
         return (
             handler_input.response_builder

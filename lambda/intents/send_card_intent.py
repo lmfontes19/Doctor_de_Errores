@@ -19,12 +19,11 @@ Patterns:
 
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
-from ask_sdk_model.ui import StandardCard, SimpleCard, Image
+from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import Diagnostic, UserProfile
-from utils import get_logger, format_timestamp
-from datetime import datetime
+from utils import format_timestamp
 
 
 class SendCardIntentHandler(BaseIntentHandler):
@@ -56,8 +55,11 @@ class SendCardIntentHandler(BaseIntentHandler):
     """
 
     # Configuracion
-    MAX_CARD_CONTENT_LENGTH = 8000  # Limite de Alexa para contenido de card
-    CARD_IMAGE_URL = None  # URL de imagen opcional para la card
+    @property
+    def MAX_CARD_CONTENT_LENGTH(self):
+        """Obtiene longitud maxima de card desde settings."""
+        from config.settings import MAX_CARD_CONTENT_LENGTH
+        return MAX_CARD_CONTENT_LENGTH
 
     def __init__(self):
         """Inicializa el handler."""
@@ -254,26 +256,6 @@ class SendCardIntentHandler(BaseIntentHandler):
         Returns:
             Response de Alexa con card adjunta
         """
-        # Intentar usar StandardCard si hay imagen, sino SimpleCard
-        if self.CARD_IMAGE_URL:
-            # StandardCard permite imagenes
-            card = StandardCard(
-                title=card_title,
-                text=card_content,
-                image=Image(
-                    small_image_url=self.CARD_IMAGE_URL,
-                    large_image_url=self.CARD_IMAGE_URL
-                )
-            )
-
-            return (
-                handler_input.response_builder
-                .speak(speak_output)
-                .set_card(card)
-                .ask("¿Puedo ayudarte con algo mas?")
-                .response
-            )
-
         # SimpleCard sin imagen
         simple_card = SimpleCard(title=card_title, content=card_content)
 

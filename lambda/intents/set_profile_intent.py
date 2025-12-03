@@ -20,14 +20,13 @@ Patterns:
 - Strategy (persistencia en sesion vs DynamoDB)
 """
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Optional, Tuple
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 from ask_sdk_model.ui import SimpleCard
 
 from intents.base import BaseIntentHandler
 from models import UserProfile, OperatingSystem, PackageManager, Editor
-from utils import get_logger
 
 # Importaciones que se crearan despues
 # from services.storage import StorageService
@@ -66,58 +65,9 @@ class SetProfileIntentHandler(BaseIntentHandler):
         a la vez. Por ejemplo: "cambialo a conda" solo actualiza el pm.
     """
 
-    # Valores por defecto
-    DEFAULT_PROFILE = {
-        'os': 'linux',
-        'pm': 'pip',
-        'editor': 'vscode'
-    }
-
-    # Mapeo de aliases comunes
-    OS_ALIASES = {
-        'windows': 'windows',
-        'win': 'windows',
-        'macos': 'macos',
-        'mac': 'macos',
-        'osx': 'macos',
-        'linux': 'linux',
-        'ubuntu': 'linux',
-        'debian': 'linux',
-        'wsl': 'wsl',
-        'subsistema': 'wsl'
-    }
-
-    PM_ALIASES = {
-        'pip': 'pip',
-        'conda': 'conda',
-        'anaconda': 'conda',
-        'miniconda': 'conda',
-        'poetry': 'poetry'
-    }
-
-    EDITOR_ALIASES = {
-        'vscode': 'vscode',
-        'visual studio code': 'vscode',
-        'code': 'vscode',
-        'vs code': 'vscode',
-        'pycharm': 'pycharm',
-        'jupyter': 'jupyter',
-        'jupyter notebook': 'jupyter',
-        'vim': 'vim',
-        'vi': 'vim',
-        'neovim': 'vim',
-        'sublime': 'sublime',
-        'sublime text': 'sublime',
-        'atom': 'atom',
-        'notepad++': 'notepad++'
-    }
-
     def __init__(self):
         """Inicializa el handler."""
         super().__init__()
-
-        # Servicio de storage (inicializar despues cuando este creado)
-        # self.storage_service = StorageService()
 
         self.logger.info("SetProfileIntentHandler initialized")
 
@@ -154,13 +104,65 @@ class SetProfileIntentHandler(BaseIntentHandler):
 
     def _handle_profile_configuration(self, handler_input: HandlerInput) -> Response:
         """
-        Logica interna para configurar el perfil.
+        Coordina el flujo de configuracion del perfil.
+
+        Responsabilidad: Orquestar las validaciones y actualizaciones,
+        delegando tareas especificas a metodos especializados.
 
         Args:
             handler_input: Input del request de Alexa
 
         Returns:
-            Response: Respuesta con confirmacion de cambios
+            Response: Respuesta con confirmacion de cambios o diagnostico
+        """
+        # 1. Extraer y validar slots
+        validation_result = self._extract_and_validate_slots(handler_input)
+
+        if validation_result.get('error_response'):
+            return validation_result['error_response']
+
+        # 2. Actualizar perfil
+        current_profile = self.get_user_profile(handler_input)
+        new_profile = self._update_profile(
+            handler_input,
+            current_profile,
+            validation_result['so_value'],
+            validation_result['pm_value'],
+            validation_result['editor_value']
+        )
+
+        # 3. Persistir perfil (sesion + futuro DynamoDB)
+        self._persist_profile(handler_input, new_profile)
+
+        # 4. Verificar y procesar error pendiente (si existe)
+        pending_error = self.get_session_attribute(
+            handler_input, 'pending_error_text')
+
+        if pending_error:
+            return self._handle_pending_diagnostic(
+                handler_input,
+                new_profile,
+                pending_error
+            )
+
+        # 5. Respuesta normal de confirmacion
+        return self._build_confirmation_response(
+            handler_input,
+            current_profile,
+            new_profile
+        )
+
+    def _extract_and_validate_slots(self, handler_input: HandlerInput) -> dict:
+        """
+        Extrae y valida los slots del request.
+
+        Responsabilidad: Validacion de entrada del usuario.
+
+        Args:
+            handler_input: Input del request de Alexa
+
+        Returns:
+            dict con valores validados o error_response si hay error
         """
         # Extraer slots
         so_slot = self.get_slot_value(handler_input, 'so')
@@ -176,30 +178,31 @@ class SetProfileIntentHandler(BaseIntentHandler):
             }
         )
 
-        # Normalizar y validar valores
-        so_value, so_valid = self._validate_and_normalize(
-            so_slot, self.OS_ALIASES, 'sistema operativo') if so_slot else (None, True)
-        pm_value, pm_valid = self._validate_and_normalize(
-            pm_slot, self.PM_ALIASES, 'gestor de paquetes') if pm_slot else (None, True)
-        editor_value, editor_valid = self._validate_and_normalize(
-            editor_slot, self.EDITOR_ALIASES, 'editor') if editor_slot else (None, True)
+        # Validar valores usando los métodos from_string de los Enums
+        so_value, so_valid = self._validate_os(
+            so_slot) if so_slot else (None, True)
+        pm_value, pm_valid = self._validate_pm(
+            pm_slot) if pm_slot else (None, True)
+        editor_value, editor_valid = self._validate_editor(
+            editor_slot) if editor_slot else (None, True)
 
-        # Deteccion especial: si pm_slot contiene un editor conocido, avisar especificamente
+        # Deteccion especial: editor en slot de PM
         if pm_slot and not pm_valid:
-            pm_lower = pm_slot.lower()
-            if pm_lower in ['vscode', 'pycharm', 'jupyter', 'vim', 'code', 'visual studio code']:
+            editor_test = Editor.from_string(pm_slot)
+            if editor_test != Editor.UNKNOWN:
                 self.logger.warning(f"User confused editor with PM: {pm_slot}")
-                error_msg = (
-                    f"Veo que mencionaste '{pm_slot}', pero ese es un editor, no un gestor de paquetes. "
-                    f"Los gestores de paquetes son: pip, conda o poetry. "
-                    f"Por favor, dime de nuevo tu configuracion. Por ejemplo: 'uso Windows y pip'."
-                )
-                return (
-                    handler_input.response_builder
-                    .speak(error_msg)
-                    .ask("¿Que sistema operativo y gestor de paquetes usas? Por ejemplo: Windows con pip")
-                    .response
-                )
+                return {
+                    'error_response': (
+                        handler_input.response_builder
+                        .speak(
+                            f"Veo que mencionaste '{pm_slot}', pero ese es un editor, no un gestor de paquetes. "
+                            f"Los gestores de paquetes son: pip, conda o poetry. "
+                            f"Por favor, dime de nuevo tu configuracion. Por ejemplo: 'uso Windows y pip'."
+                        )
+                        .ask("¿Que sistema operativo y gestor de paquetes usas? Por ejemplo: Windows con pip")
+                        .response
+                    )
+                }
 
         self.logger.info(
             "SetProfileIntent - After validation",
@@ -208,33 +211,14 @@ class SetProfileIntentHandler(BaseIntentHandler):
                 'pm_value': pm_value, 'pm_valid': pm_valid,
                 'editor_value': editor_value, 'editor_valid': editor_valid
             }
-        )        # Si hay valores invalidos, reportar error con logging
+        )
+
+        # Validar que todos los slots sean validos
         if not (so_valid and pm_valid and editor_valid):
-            invalid_items = []
-            if not so_valid:
-                invalid_items.append(
-                    f"'{so_slot}' no es un sistema operativo valido")
-                self.logger.warning(f"Invalid OS: {so_slot}")
-            if not pm_valid:
-                invalid_items.append(
-                    f"'{pm_slot}' no es un gestor de paquetes valido como pip, conda o poetry")
-                self.logger.warning(f"Invalid PM: {pm_slot}")
-            if not editor_valid:
-                invalid_items.append(
-                    f"'{editor_slot}' no es un editor reconocido")
-                self.logger.warning(f"Invalid editor: {editor_slot}")
-
-            error_msg = "Lo siento, " + ", ".join(invalid_items) + ". "
-            error_msg += "Por favor, intentalo de nuevo. Di, por ejemplo: 'uso Windows y pip' o 'uso Linux con conda'."
-
-            self.logger.info(f"Returning validation error: {error_msg}")
-
-            return (
-                handler_input.response_builder
-                .speak(error_msg)
-                .ask("¿Que sistema operativo y gestor de paquetes usas?")
-                .response
-            )
+            return {'error_response': self._build_validation_error_response(
+                handler_input, so_slot, pm_slot, editor_slot,
+                so_valid, pm_valid, editor_valid
+            )}
 
         # Verificar que al menos un slot valido este presente
         if not any([so_value, pm_value, editor_value]):
@@ -246,27 +230,92 @@ class SetProfileIntentHandler(BaseIntentHandler):
                     'editor_slot': editor_slot
                 }
             )
-            return self._handle_no_slots(handler_input)
+            return {'error_response': self._handle_no_slots(handler_input)}
 
-        # Obtener perfil actual
-        current_profile = self.get_user_profile(handler_input)
+        return {
+            'so_value': so_value,
+            'pm_value': pm_value,
+            'editor_value': editor_value
+        }
 
-        # Construir nuevo perfil usando update()
+    def _build_validation_error_response(
+        self,
+        handler_input: HandlerInput,
+        so_slot: Optional[str],
+        pm_slot: Optional[str],
+        editor_slot: Optional[str],
+        so_valid: bool,
+        pm_valid: bool,
+        editor_valid: bool
+    ) -> Response:
+        """
+        Construye respuesta de error de validacion.
+
+        Responsabilidad: Generar mensajes de error claros para el usuario.
+
+        Args:
+            handler_input: Input del request
+            so_slot, pm_slot, editor_slot: Valores de slots
+            so_valid, pm_valid, editor_valid: Flags de validez
+
+        Returns:
+            Response con mensaje de error
+        """
+        invalid_items = []
+        if not so_valid:
+            invalid_items.append(
+                f"'{so_slot}' no es un sistema operativo valido")
+            self.logger.warning(f"Invalid OS: {so_slot}")
+        if not pm_valid:
+            invalid_items.append(
+                f"'{pm_slot}' no es un gestor de paquetes valido como pip, conda o poetry"
+            )
+            self.logger.warning(f"Invalid PM: {pm_slot}")
+        if not editor_valid:
+            invalid_items.append(f"'{editor_slot}' no es un editor reconocido")
+            self.logger.warning(f"Invalid editor: {editor_slot}")
+
+        error_msg = "Lo siento, " + ", ".join(invalid_items) + ". "
+        error_msg += "Por favor, intentalo de nuevo. Di, por ejemplo: 'uso Windows y pip' o 'uso Linux con conda'."
+
+        self.logger.info(f"Returning validation error: {error_msg}")
+
+        return (
+            handler_input.response_builder
+            .speak(error_msg)
+            .ask("¿Que sistema operativo y gestor de paquetes usas?")
+            .response
+        )
+
+    def _update_profile(
+        self,
+        handler_input: HandlerInput,
+        current_profile: UserProfile,
+        so_value: Optional[str],
+        pm_value: Optional[str],
+        editor_value: Optional[str]
+    ) -> UserProfile:
+        """
+        Actualiza el perfil con los nuevos valores.
+
+        Responsabilidad: Logica de actualizacion del modelo de perfil.
+
+        Args:
+            handler_input: Input del request
+            current_profile: Perfil actual del usuario
+            so_value, pm_value, editor_value: Nuevos valores validados
+
+        Returns:
+            UserProfile actualizado
+        """
         new_profile = current_profile.update(
             os=so_value if so_value else None,
             pm=pm_value if pm_value else None,
             editor=editor_value if editor_value else None
         )
 
-        # Guardar en sesion
-        self.save_user_profile(handler_input, new_profile)
-
-        # TODO: Persistir en DynamoDB cuando StorageService este listo
-        # user_id = self.get_user_id(handler_input)
-        # self.storage_service.save_user_profile(user_id, new_profile.to_dict())
-
         self.logger.info(
-            f"Profile updated",
+            "Profile updated",
             extra={
                 'old_profile': current_profile.to_dict(),
                 'new_profile': new_profile.to_dict(),
@@ -274,112 +323,151 @@ class SetProfileIntentHandler(BaseIntentHandler):
             }
         )
 
-        # Verificar si hay un error pendiente para diagnosticar
-        pending_error = self.get_session_attribute(
-            handler_input, 'pending_error_text')
+        return new_profile
 
-        if pending_error:
-            # Limpiar el error pendiente
-            self.set_session_attribute(
-                handler_input, 'pending_error_text', None)
+    def _persist_profile(self, handler_input: HandlerInput, profile: UserProfile) -> None:
+        """
+        Persiste el perfil en sesion y opcionalmente en DynamoDB.
 
-            # Importar aqui para evitar dependencia circular
-            from intents.diagnose_intent import DiagnoseIntentHandler
+        Responsabilidad: Persistencia de datos del perfil.
 
-            # Crear un DiagnoseIntent handler y procesarlo
-            diagnose_handler = DiagnoseIntentHandler()
+        Args:
+            handler_input: Input del request
+            profile: Perfil a persistir
+        """
+        # Guardar en sesion (siempre)
+        self.save_user_profile(handler_input, profile)
 
-            self.logger.info(
-                f"Processing pending error after profile setup",
-                extra={'error_text': pending_error[:50]}
-            )
+        # TODO: Persistir en DynamoDB cuando StorageService este listo
+        # user_id = self.get_user_id(handler_input)
+        # self.storage_service.save_user_profile(user_id, profile.to_dict())
 
-            # Simular el diagnostico directamente
-            from models import Diagnostic
-            from services.kb_service import kb_service
-            from services.ai_client import ai_service
-
-            # Generar diagnostico
-            kb_result = kb_service.search_diagnostic(
-                pending_error, new_profile)
-
-            if kb_result and kb_result.confidence >= 0.60:
-                diagnostic = kb_result
-            else:
-                diagnostic = ai_service.diagnose(pending_error, new_profile)
-
-            # Guardar en sesion
-            self.save_last_diagnostic(handler_input, diagnostic)
-
-            # Construir respuesta con perfil + diagnostico (con limites de longitud)
-            profile_msg = f"Perfecto. Configure tu perfil para {new_profile.os.value} con {new_profile.package_manager.value}. "
-
-            # Sanitizar y truncar voice_text
-            diagnostic_msg = diagnostic.voice_text or "Detecte el error."
-            # Escapar caracteres problematicos para SSML
-            diagnostic_msg = diagnostic_msg.replace(
-                '&', 'y').replace('<', '').replace('>', '')
-            diagnostic_msg = diagnostic_msg.replace('"', '').replace("'", '')
-
-            if len(diagnostic_msg) > 200:
-                diagnostic_msg = diagnostic_msg[:197] + "..."
-
-            speak_output = profile_msg + \
-                f"Ahora, sobre tu error: {diagnostic_msg}"
-
-            # Asegurar que el total no exceda ~600 caracteres
-            if len(speak_output) > 600:
-                speak_output = speak_output[:597] + "..."
-
-            self.logger.info(f"speak_output length: {len(speak_output)}")
-            self.logger.info(f"speak_output preview: {speak_output[:100]}...")
-
-            # Construir card con limites y sanitizacion
-            card_text = diagnostic.card_text or "Ver diagnostico completo"
-            # Sanitizar para card tambien
-            card_text = card_text.replace('&', 'y')
-            if len(card_text) > 800:
-                card_text = card_text[:797] + "..."
-
-            card_title = diagnostic.card_title[:
-                                               100] if diagnostic.card_title else "Diagnostico"
-
-            try:
-                card = SimpleCard(
-                    title=card_title,
-                    content=card_text
-                )
-            except Exception as card_error:
-                self.logger.error(f"Error creating card: {card_error}")
-                # Fallback: card simple sin contenido problematico
-                card = SimpleCard(
-                    title="Diagnostico",
-                    content="Configuracion guardada. Tu error ha sido diagnosticado."
-                )
-
-            return (
-                handler_input.response_builder
-                .speak(speak_output)
-                .set_card(card)
-                .ask("¿Quieres saber por que ocurre esto o necesitas mas soluciones?")
-                .response
-            )
-
-        # Si no hay error pendiente, respuesta normal
-        return self._build_confirmation_response(
-            handler_input,
-            current_profile,
-            new_profile
+        self.logger.info(
+            "Profile persisted",
+            extra={'profile': profile.to_dict()}
         )
 
-    def _validate_and_normalize(self, value: str, aliases: Dict[str, str], field_name: str) -> Tuple[Optional[str], bool]:
+    def _handle_pending_diagnostic(
+        self,
+        handler_input: HandlerInput,
+        new_profile: UserProfile,
+        pending_error: str
+    ) -> Response:
         """
-        Valida y normaliza un valor usando el diccionario de aliases.
+        Procesa un error pendiente despues de configurar el perfil.
+
+        Responsabilidad: Coordinacion del flujo de diagnostico post-configuracion.
+
+        Args:
+            handler_input: Input del request
+            new_profile: Perfil recien configurado
+            pending_error: Texto del error pendiente
+
+        Returns:
+            Response con confirmacion de perfil + diagnostico
+        """
+        # Limpiar el error pendiente
+        self.set_session_attribute(handler_input, 'pending_error_text', None)
+
+        self.logger.info(
+            "Processing pending error after profile setup",
+            extra={'error_text': pending_error[:50]}
+        )
+
+        # Generar diagnostico
+        diagnostic = self._generate_diagnostic(pending_error, new_profile)
+
+        # Guardar en sesion
+        self.save_last_diagnostic(handler_input, diagnostic)
+
+        # Construir respuesta combinada
+        return self._build_profile_with_diagnostic_response(
+            handler_input,
+            new_profile,
+            diagnostic
+        )
+
+    def _generate_diagnostic(self, error_text: str, profile: UserProfile):
+        """
+        Genera un diagnostico usando KB o AI.
+
+        Responsabilidad: Delegacion a servicios de diagnostico.
+
+        Args:
+            error_text: Texto del error
+            profile: Perfil del usuario
+
+        Returns:
+            Diagnostic object
+        """
+        from services.kb_service import kb_service
+        from services.ai_client import ai_service
+        from config.settings import KB_CONFIDENCE_THRESHOLD
+
+        kb_result = kb_service.search_diagnostic(error_text, profile)
+
+        if kb_result and kb_result.confidence >= KB_CONFIDENCE_THRESHOLD:
+            self.logger.info("Using KB diagnostic")
+            return kb_result
+
+        self.logger.info("Using AI diagnostic")
+        return ai_service.generate_diagnostic(error_text, profile)
+
+    def _build_profile_with_diagnostic_response(
+        self,
+        handler_input: HandlerInput,
+        profile: UserProfile,
+        diagnostic
+    ) -> Response:
+        """
+        Construye respuesta que combina confirmacion de perfil y diagnostico.
+
+        Responsabilidad: Generacion de respuesta combinada para flujo continuo.
+
+        Args:
+            handler_input: Input del request
+            profile: Perfil configurado
+            diagnostic: Diagnostico generado
+
+        Returns:
+            Response combinada
+        """
+        from utils import sanitize_ssml_text, truncate_text
+        from config.settings import MAX_VOICE_LENGTH
+
+        profile_msg = f"Perfecto. Configure tu perfil para {profile.os.value} con {profile.package_manager.value}. "
+
+        # Procesar mensaje de diagnostico
+        diagnostic_msg = sanitize_ssml_text(
+            diagnostic.voice_text or "Detecte el error.")
+        diagnostic_msg = truncate_text(diagnostic_msg, max_length=200)
+
+        speak_output = profile_msg + f"Ahora, sobre tu error: {diagnostic_msg}"
+        speak_output = truncate_text(speak_output, max_length=MAX_VOICE_LENGTH)
+
+        # Construir card
+        card_content = sanitize_ssml_text(
+            diagnostic.card_text or "Ver diagnostico completo")
+        card_content = truncate_text(card_content, max_length=800)
+        card_title = truncate_text(
+            diagnostic.card_title or "Diagnostico", max_length=100)
+
+        card = SimpleCard(title=card_title, content=card_content)
+
+        return (
+            handler_input.response_builder
+            .speak(speak_output)
+            .set_card(card)
+            .ask("¿Quieres saber por que ocurre esto o necesitas mas soluciones?")
+            .response
+        )
+
+    def _validate_os(self, value: str) -> Tuple[Optional[str], bool]:
+        """
+        Valida y normaliza un sistema operativo usando OperatingSystem.from_string().
 
         Args:
             value: Valor raw del slot
-            aliases: Diccionario de aliases
-            field_name: Nombre del campo para logging
 
         Returns:
             Tupla (valor_normalizado, es_valido)
@@ -387,40 +475,52 @@ class SetProfileIntentHandler(BaseIntentHandler):
         if not value:
             return None, True
 
-        # Convertir a lowercase para comparacion
-        value_lower = value.lower().strip()
+        os_enum = OperatingSystem.from_string(value)
+        if os_enum == OperatingSystem.UNKNOWN:
+            self.logger.warning(f"Invalid OS value: '{value}'")
+            return value.lower(), False
 
-        # Buscar en aliases (exact match)
-        normalized = aliases.get(value_lower)
-        if normalized:
-            return normalized, True
+        return os_enum.value, True
 
-        # Si no se encuentra, intentar match parcial
-        for alias, canonical in aliases.items():
-            if alias in value_lower or value_lower in alias:
-                return canonical, True
-
-        # No se reconoce - valor invalido
-        self.logger.warning(
-            f"Invalid {field_name} value: '{value}'",
-            extra={'value': value, 'field': field_name}
-        )
-        return value_lower, False
-
-    def _normalize_value(self, value: str, aliases: Dict[str, str]) -> Optional[str]:
+    def _validate_pm(self, value: str) -> Tuple[Optional[str], bool]:
         """
-        Normaliza un valor usando el diccionario de aliases (sin validacion estricta).
-        Mantiene compatibilidad con codigo legacy.
+        Valida y normaliza un gestor de paquetes usando PackageManager.from_string().
 
         Args:
             value: Valor raw del slot
-            aliases: Diccionario de aliases
 
         Returns:
-            Valor normalizado o None si no se reconoce
+            Tupla (valor_normalizado, es_valido)
         """
-        normalized, _ = self._validate_and_normalize(value, aliases, "field")
-        return normalized
+        if not value:
+            return None, True
+
+        pm_enum = PackageManager.from_string(value)
+        if pm_enum == PackageManager.UNKNOWN:
+            self.logger.warning(f"Invalid PM value: '{value}'")
+            return value.lower(), False
+
+        return pm_enum.value, True
+
+    def _validate_editor(self, value: str) -> Tuple[Optional[str], bool]:
+        """
+        Valida y normaliza un editor usando Editor.from_string().
+
+        Args:
+            value: Valor raw del slot
+
+        Returns:
+            Tupla (valor_normalizado, es_valido)
+        """
+        if not value:
+            return None, True
+
+        editor_enum = Editor.from_string(value)
+        if editor_enum == Editor.UNKNOWN:
+            self.logger.warning(f"Invalid editor value: '{value}'")
+            return value.lower(), False
+
+        return editor_enum.value, True
 
     def _get_changed_fields(
         self,
@@ -554,9 +654,9 @@ class SetProfileIntentHandler(BaseIntentHandler):
         """
         if field == 'os':
             return profile.os.value
-        elif field == 'pm':
+        if field == 'pm':
             return profile.package_manager.value
-        elif field == 'editor':
+        if field == 'editor':
             return profile.editor.value
         return 'desconocido'
 

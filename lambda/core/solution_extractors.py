@@ -194,7 +194,7 @@ class SolutionExtractionStrategy:
             NestedDictExtractor(),
             FlatDictExtractor(),
             ListExtractor(),
-            EmptyExtractor()  # Siempre al final como fallback
+            EmptyExtractor()
         ]
 
     def extract_solutions(

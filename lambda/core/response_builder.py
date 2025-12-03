@@ -9,7 +9,7 @@ Patterns:
 - Fluent Interface: Encadenamiento de metodos
 """
 
-from typing import Optional, Union
+from typing import Optional
 from ask_sdk_model import Response
 from ask_sdk_model.ui import SimpleCard, StandardCard, Image
 from utils import get_logger
@@ -159,8 +159,8 @@ class AlexaResponseBuilder:
                 small_image_url=image_url,
                 large_image_url=image_url
             )
-        else:
-            return self.simple_card(title=title, content=content)
+
+        return self.simple_card(title=title, content=content)
 
     def end_session(self, should_end: bool = True) -> 'AlexaResponseBuilder':
         """
@@ -464,9 +464,9 @@ class ProfileResponseBuilder:
         """Obtiene valor del campo."""
         if field == 'os':
             return profile.os.value
-        elif field == 'pm':
+        if field == 'pm':
             return profile.package_manager.value
-        elif field == 'editor':
+        if field == 'editor':
             return profile.editor.value
         return 'desconocido'
 

@@ -8,8 +8,14 @@ Las configuraciones pueden ser sobrescritas con variables de entorno.
 """
 
 import os
-from typing import Optional
 from pathlib import Path
+from enum import Enum
+
+class AIProvider(Enum):
+    """Providers de IA soportados."""
+    BEDROCK = "bedrock"
+    OPENAI = "openai"
+    MOCK = "mock"  # Para testing
 
 # Cargar variables de entorno desde .env
 try:
@@ -33,35 +39,21 @@ except Exception as e:
 # CONFIGURACION GENERAL
 # ============================================================================
 
-# Entorno de ejecucion
-# development, staging, production
+# Entorno de ejecucion (development, staging, production)
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 IS_PRODUCTION = ENVIRONMENT == 'production'
 IS_DEVELOPMENT = ENVIRONMENT == 'development'
 
-# Logging
-# DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Logging (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-
-
-# ============================================================================
-# CONFIGURACION DE ALEXA
-# ============================================================================
-
-# Skill ID (para validacion)
-SKILL_ID = os.getenv('SKILL_ID', '')
-
-# Timeouts
-RESPONSE_TIMEOUT = 30  # segundos
 
 
 # ============================================================================
 # CONFIGURACION DE KNOWLEDGE BASE
 # ============================================================================
 
-# Umbrales de confianza
+# Umbral de confianza para match en KB (0.0 - 1.0)
 KB_CONFIDENCE_THRESHOLD = float(os.getenv('KB_CONFIDENCE_THRESHOLD', '0.60'))
-KB_MIN_CONFIDENCE = 0.3
 
 # Path a KB templates (relativo a este archivo)
 KB_TEMPLATES_PATH = os.path.join(
@@ -69,13 +61,14 @@ KB_TEMPLATES_PATH = os.path.join(
     'kb_templates.json'
 )
 
+MAX_SOLUTIONS=5
 
 # ============================================================================
 # CONFIGURACION DE AI SERVICE
 # ============================================================================
 
-# Provider preferido
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'bedrock')  # bedrock, openai, mock
+# Provider preferido (bedrock, openai, mock)
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'openai')
 
 # AWS Bedrock
 BEDROCK_REGION = os.getenv('BEDROCK_REGION', 'us-east-1')
@@ -86,14 +79,11 @@ BEDROCK_MODEL_ID = os.getenv(
 BEDROCK_MAX_TOKENS = int(os.getenv('BEDROCK_MAX_TOKENS', '1000'))
 BEDROCK_TEMPERATURE = float(os.getenv('BEDROCK_TEMPERATURE', '0.3'))
 
-# OpenAI (opcional)
+# OpenAI
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
-OPENAI_MAX_TOKENS = int(os.getenv('OPENAI_MAX_TOKENS', '1000'))
-OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.3'))
-
-# Fallback
-AI_USE_FALLBACK = True  # Usar mock si AI falla
+OPENAI_MAX_TOKENS = int(os.getenv('OPENAI_MAX_TOKENS', '350'))
+OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.2'))
 
 
 # ============================================================================
@@ -104,10 +94,7 @@ AI_USE_FALLBACK = True  # Usar mock si AI falla
 DYNAMODB_TABLE_NAME = os.getenv('DYNAMODB_TABLE', 'DoctorErrores_Users')
 DYNAMODB_REGION = os.getenv('DYNAMODB_REGION', 'us-east-1')
 DYNAMODB_ENDPOINT = os.getenv('DYNAMODB_ENDPOINT')  # Para testing local
-
-# Cache
-SESSION_CACHE_TTL = 86400  # 24 horas en segundos
-DIAGNOSTIC_HISTORY_LIMIT = 50  # Maximo de diagnosticos en historial
+ENABLE_STORAGE = os.getenv('ENABLE_STORAGE', 'true').lower() == 'true'
 
 
 # ============================================================================
@@ -115,41 +102,12 @@ DIAGNOSTIC_HISTORY_LIMIT = 50  # Maximo de diagnosticos en historial
 # ============================================================================
 
 # Limites de texto
-MAX_VOICE_TEXT_LENGTH = 300  # caracteres
-MAX_CARD_TEXT_LENGTH = 1000  # caracteres
-MAX_CARD_TITLE_LENGTH = 100  # caracteres
-
-# Personalizacion
-DEFAULT_OS = 'linux'
-DEFAULT_PACKAGE_MANAGER = 'pip'
-DEFAULT_EDITOR = 'vscode'
-
-
-# ============================================================================
-# CONFIGURACION DE FEATURES
-# ============================================================================
-
-# Features flags
-ENABLE_AI_DIAGNOSTICS = os.getenv(
-    'ENABLE_AI_DIAGNOSTICS', 'true').lower() == 'true'
-ENABLE_STORAGE = os.getenv('ENABLE_STORAGE', 'true').lower() == 'true'
-ENABLE_METRICS = os.getenv('ENABLE_METRICS', 'true').lower() == 'true'
-ENABLE_DETAILED_LOGS = os.getenv(
-    'ENABLE_DETAILED_LOGS', 'false').lower() == 'true'
-
-
-# ============================================================================
-# CONFIGURACION DE INTERCEPTORS
-# ============================================================================
-
-# Logging interceptors
-ENABLE_REQUEST_LOGGING = True
-ENABLE_RESPONSE_LOGGING = True
-ENABLE_SESSION_LOGGING = IS_DEVELOPMENT
-
-# Metrics interceptors
-ENABLE_PERFORMANCE_METRICS = True
-ENABLE_USER_METRICS = True
+MAX_VOICE_LENGTH = int(os.getenv('MAX_VOICE_LENGTH', '300'))
+MAX_CARD_LENGTH = int(os.getenv('MAX_CARD_LENGTH', '1000'))
+MAX_CARD_CONTENT_LENGTH = int(os.getenv('MAX_CARD_CONTENT_LENGTH', '8000'))
+MAX_VOICE_TEXT_LENGTH = MAX_VOICE_LENGTH
+MAX_CARD_TEXT_LENGTH = MAX_CARD_LENGTH
+MAX_CARD_TITLE_LENGTH = 100
 
 
 # ============================================================================
@@ -159,14 +117,9 @@ ENABLE_USER_METRICS = True
 if IS_DEVELOPMENT:
     # En desarrollo, usar logs más verbosos
     LOG_LEVEL = 'DEBUG'
-    ENABLE_DETAILED_LOGS = True
 
     # Usar mock AI por defecto en desarrollo
     AI_PROVIDER = os.getenv('AI_PROVIDER', 'mock')
-
-    # DynamoDB local si está configurado
-    if not DYNAMODB_ENDPOINT:
-        DYNAMODB_ENDPOINT = 'http://localhost:8000'
 
 
 # ============================================================================
@@ -183,7 +136,7 @@ def validate_config() -> bool:
     errors = []
 
     # Validar AI provider
-    if AI_PROVIDER not in ['bedrock', 'openai', 'mock']:
+    if AI_PROVIDER not in [provider.value for provider in AIProvider]:
         errors.append(f"AI_PROVIDER invalido: {AI_PROVIDER}")
 
     # Validar que KB templates existe
@@ -220,9 +173,10 @@ def get_config_summary() -> dict:
         'ai_provider': AI_PROVIDER,
         'kb_confidence_threshold': KB_CONFIDENCE_THRESHOLD,
         'storage_enabled': ENABLE_STORAGE,
-        'ai_enabled': ENABLE_AI_DIAGNOSTICS,
+        'openai_model': OPENAI_MODEL if AI_PROVIDER == 'openai' else None,
+        'openai_max_tokens': OPENAI_MAX_TOKENS if AI_PROVIDER == 'openai' else None,
+        'bedrock_model': BEDROCK_MODEL_ID if AI_PROVIDER == 'bedrock' else None,
         'dynamodb_table': DYNAMODB_TABLE_NAME if ENABLE_STORAGE else None,
-        'bedrock_model': BEDROCK_MODEL_ID if AI_PROVIDER == 'bedrock' else None
     }
 
 

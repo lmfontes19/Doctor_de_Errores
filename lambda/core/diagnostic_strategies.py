@@ -236,7 +236,7 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
             Diagnostic generado por IA
         """
         try:
-            self.logger.info("Calling live AI service (cost: $$$)")
+            self.logger.info("Calling live AI service")
 
             diagnostic = self.ai_service.generate_diagnostic(
                 error_text,

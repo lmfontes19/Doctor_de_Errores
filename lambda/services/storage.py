@@ -253,7 +253,7 @@ class StorageService:
                 'timestamp': datetime.utcnow().isoformat(),
                 'errorType': diagnostic.error_type,
                 'source': diagnostic.source,
-                'confidence': float(diagnostic.confidence),
+                'confidence': Decimal(str(diagnostic.confidence)),
                 'solutionsCount': len(diagnostic.solutions) if diagnostic.solutions else 0
             }
 

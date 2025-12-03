@@ -199,9 +199,12 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         try:
             request = handler_input.request_envelope.request
             if hasattr(request, 'intent') and hasattr(request.intent, 'slots'):
+                slots = request.intent.slots
+                if slots is None:
+                    return {}
                 return {
                     name: slot.value
-                    for name, slot in request.intent.slots.items()
+                    for name, slot in slots.items()
                     if slot.value
                 }
         except Exception as e:

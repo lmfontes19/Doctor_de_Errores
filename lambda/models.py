@@ -470,7 +470,12 @@ class ErrorValidation:
         'unicode error', 'unicodeerror',
         'os error', 'oserror',
         'io error', 'ioerror',
-        'traceback'
+        'traceback',
+        # Common Python packages
+        'numpy', 'pandas', 'scipy', 'matplotlib', 'seaborn',
+        'flask', 'django', 'fastapi', 'requests', 'sqlalchemy',
+        'tensorflow', 'keras', 'pytorch', 'scikit-learn', 'sklearn',
+        'opencv', 'cv2', 'pillow', 'pil', 'beautifulsoup', 'bs4',
     ]
 
     VAGUE_PHRASES = [

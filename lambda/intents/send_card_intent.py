@@ -25,6 +25,8 @@ from intents.base import BaseIntentHandler
 from models import Diagnostic, UserProfile
 from utils import format_timestamp
 
+from config.settings import MAX_CARD_CONTENT_LENGTH
+
 
 class SendCardIntentHandler(BaseIntentHandler):
     """
@@ -58,7 +60,6 @@ class SendCardIntentHandler(BaseIntentHandler):
     @property
     def MAX_CARD_CONTENT_LENGTH(self):
         """Obtiene longitud maxima de card desde settings."""
-        from config.settings import MAX_CARD_CONTENT_LENGTH
         return MAX_CARD_CONTENT_LENGTH
 
     def __init__(self):

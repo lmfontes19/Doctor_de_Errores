@@ -14,6 +14,12 @@ from typing import Optional, List
 from models import Diagnostic, UserProfile
 from utils import get_logger
 
+from config.settings import KB_CONFIDENCE_THRESHOLD
+
+from services.kb_service import kb_service
+from services.ai_client import ai_service
+from services.storage import storage_service, get_error_hash
+
 
 class DiagnosticStrategy(ABC):
     """
@@ -78,9 +84,7 @@ class KnowledgeBaseStrategy(DiagnosticStrategy):
     def __init__(self):
         """Inicializa con referencia al servicio KB."""
         super().__init__()
-        from services.kb_service import kb_service
         self.kb_service = kb_service
-        from config.settings import KB_CONFIDENCE_THRESHOLD
         self.confidence_threshold = KB_CONFIDENCE_THRESHOLD
 
     def search_diagnostic(
@@ -147,7 +151,6 @@ class CachedAIDiagnosticStrategy(DiagnosticStrategy):
     def __init__(self):
         """Inicializa con referencia al servicio de storage."""
         super().__init__()
-        from services.storage import storage_service
         self.storage_service = storage_service
 
     def search_diagnostic(
@@ -166,10 +169,9 @@ class CachedAIDiagnosticStrategy(DiagnosticStrategy):
             Diagnostic cacheado si existe y es compatible, None si no
         """
         try:
-            from services.storage import get_error_hash
             error_hash = get_error_hash(error_text)
 
-            self.logger.debug(
+            self.logger.info(
                 f"Searching cache for hash: {error_hash[:16]}..."
             )
 
@@ -215,8 +217,6 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
     def __init__(self):
         """Inicializa con referencia a servicios de IA y storage."""
         super().__init__()
-        from services.ai_client import ai_service
-        from services.storage import storage_service
         self.ai_service = ai_service
         self.storage_service = storage_service
 
@@ -276,7 +276,6 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
             user_profile: Perfil del usuario
         """
         try:
-            from services.storage import get_error_hash
             error_hash = get_error_hash(error_text)
 
             success = self.storage_service.save_ai_diagnostic_cache(
@@ -287,7 +286,7 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
 
             if success:
                 self.logger.info(
-                    f"Diagnostic cached for future use",
+                    "Diagnostic cached for future use",
                     extra={'error_hash': error_hash[:16]}
                 )
             else:

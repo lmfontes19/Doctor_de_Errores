@@ -20,7 +20,10 @@ from openai import OpenAI
 from models import Diagnostic, UserProfile, ErrorType
 from core.factories import DiagnosticFactory
 from utils import get_logger
-
+from config.settings import (
+    BEDROCK_MAX_TOKENS, BEDROCK_TEMPERATURE, OPENAI_MAX_TOKENS,
+    OPENAI_TEMPERATURE, OPENAI_API_KEY, OPENAI_MODEL
+)
 
 class AIClientError(Exception):
     """Excepcion base para errores de cliente AI."""
@@ -98,10 +101,10 @@ Sistema: {os_val}, Gestor: {pm_val}
 Responde en JSON:
 {{
 "error_type": "NombreDelError",
-"voice_text": "Explicación clara del error en 2-3 oraciones que se pueda decir en voz alta",
-"solutions": ["Solución 1 específica con comando para {os_val} y {pm_val}", "Solución 2 alternativa"],
-"explanation": "Explicación técnica breve",
-"common_causes": ["Causa común 1", "Causa común 2"]
+"voice_text": "Explicacion clara del error en 2-3 oraciones que se pueda decir en voz alta",
+"solutions": ["Solucion 1 especifica con comando para {os_val} y {pm_val}", "Solucion 2 alternativa"],
+"explanation": "Explicacion tecnica breve",
+"common_causes": ["Causa comun 1", "Causa comun 2"]
 }}"""
 
     def _parse_ai_response(
@@ -204,8 +207,6 @@ class BedrockAIClient(BaseAIClient):
     ) -> Optional[Diagnostic]:
         """Genera diagnostico usando Bedrock."""
         try:
-            from config.settings import BEDROCK_MAX_TOKENS, BEDROCK_TEMPERATURE
-
             client = self._get_client()
             prompt = self._build_prompt(error_text, user_profile)
 
@@ -277,7 +278,7 @@ class OpenAIClient(BaseAIClient):
                 if not self.api_key:
                     raise AIProviderUnavailable(
                         "OpenAI API key not configured")
-                self._client = OpenAI(api_key=self.api_key)
+                self._client = OpenAI(api_key=self.api_key, max_retries=0, timeout=6)
             except ImportError as e:
                 self.logger.error(f"OpenAI library not installed: {e}")
                 raise AIProviderUnavailable("OpenAI library not available")
@@ -304,8 +305,6 @@ class OpenAIClient(BaseAIClient):
     ) -> Optional[Diagnostic]:
         """Genera diagnostico usando OpenAI."""
         try:
-            from config.settings import OPENAI_MAX_TOKENS, OPENAI_TEMPERATURE
-
             client = self._get_client()
             prompt = self._build_prompt(error_text, user_profile)
 
@@ -315,7 +314,7 @@ class OpenAIClient(BaseAIClient):
                 messages=[
                     {
                         "role": "system",
-                        "content": "Eres un experto en diagnóstico de errores Python. Genera respuestas completas pero concisas en español. El campo voice_text debe tener 2-3 oraciones explicativas."
+                        "content": "Experto en diagnostico de errores Python. Genera respuestas completas pero concisas en español."
                     },
                     {
                         "role": "user",
@@ -350,9 +349,9 @@ class OpenAIClient(BaseAIClient):
 
 class MockAIClient(BaseAIClient):
     """
-    Cliente mock inteligente para fallback rápido.
+    Cliente mock inteligente para fallback raido.
 
-    Genera diagnósticos basados en patrones sin llamar a servicios externos.
+    Genera diagnosticos basados en patrones sin llamar a servicios externos.
     """
 
     def is_available(self) -> bool:
@@ -398,8 +397,6 @@ class AIService:
             self.providers = providers
         else:
             # Configuracion por defecto: intentar OpenAI, luego mock
-            from config.settings import OPENAI_API_KEY, OPENAI_MODEL
-
             self.providers = [
                 OpenAIClient(api_key=OPENAI_API_KEY, model=OPENAI_MODEL),
                 MockAIClient(),

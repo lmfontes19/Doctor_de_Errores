@@ -478,7 +478,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
             "Por favor, intenta de nuevo."
         )
 
-        reprompt = "En que más puedo ayudarte?"
+        reprompt = "En que mas puedo ayudarte?"
 
         return (
             handler_input.response_builder
@@ -496,33 +496,33 @@ class IntentValidator:
     """
     Validador de datos para intents.
 
-    Proporciona metodos estáticos para validar slots y otros datos
+    Proporciona metodos estaticos para validar slots y otros datos
     antes de procesarlos.
     """
 
     @staticmethod
     def is_valid_slot(slot_value: Optional[str]) -> bool:
         """
-        Valida que un slot tenga un valor válido.
+        Valida que un slot tenga un valor valido.
 
         Args:
             slot_value: Valor del slot
 
         Returns:
-            bool: True si el slot es válido
+            bool: True si el slot es valido
         """
         return slot_value is not None and len(slot_value.strip()) > 0
 
     @staticmethod
     def is_valid_error_text(error_text: Optional[str]) -> bool:
         """
-        Valida que el texto de error sea válido.
+        Valida que el texto de error sea valido.
 
         Args:
             error_text: Texto del error
 
         Returns:
-            bool: True si el texto es válido
+            bool: True si el texto es valido
         """
         if not error_text or len(error_text.strip()) < 3:
             return False
@@ -541,7 +541,7 @@ class IntentValidator:
             value: Valor a validar
 
         Returns:
-            bool: True si el valor es válido
+            bool: True si el valor es valido
         """
         valid_values = {
             'os': ['Windows', 'macOS', 'Linux', 'WSL'],
@@ -598,7 +598,7 @@ class SessionHelper:
             handler_input: Input del request
             history_key: Clave del historial
             item: Item a anhadir
-            max_items: Numero máximo de items a mantener
+            max_items: Numero maximo de items a mantener
         """
         session_attr = handler_input.attributes_manager.session_attributes
         history = session_attr.get(history_key, [])
@@ -651,7 +651,7 @@ def require_profile(func):
                 slots = handler_input.request_envelope.request.intent.slots
                 if slots and 'errorText' in slots and slots['errorText'].value:
                     error_text = slots['errorText'].value
-                    # Guardar en sesión para procesarlo después
+                    # Guardar en sesion para procesarlo despues
                     self.set_session_attribute(
                         handler_input, 'pending_error_text', error_text)
             except Exception as e:

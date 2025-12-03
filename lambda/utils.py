@@ -68,7 +68,7 @@ class LoggerManager:
 
     def _setup_root_logger(self):
         """
-        Configura el logger raíz con formato y handlers.
+        Configura el logger raiz con formato y handlers.
         """
         # Formato personalizado con mas informacion
         formatter = logging.Formatter(
@@ -94,7 +94,7 @@ class LoggerManager:
         Obtiene un logger por nombre (con cache).
 
         Args:
-            name: Nombre del logger (típicamente __name__ del modulo)
+            name: Nombre del logger (tipicamente __name__ del modulo)
 
         Returns:
             logging.Logger: Logger configurado
@@ -123,10 +123,10 @@ class LoggerManager:
     @classmethod
     def get_instance(cls) -> 'LoggerManager':
         """
-        Obtiene la instancia única del LoggerManager.
+        Obtiene la instancia unica del LoggerManager.
 
         Returns:
-            LoggerManager: Instancia única del singleton
+            LoggerManager: Instancia unica del singleton
         """
         if cls._instance is None:
             cls._instance = cls()
@@ -264,7 +264,7 @@ def get_logger_manager() -> LoggerManager:
     Funcion de conveniencia para obtener la instancia del LoggerManager.
 
     Returns:
-        LoggerManager: Instancia única del singleton
+        LoggerManager: Instancia unica del singleton
 
     Usage:
         from utils import get_logger_manager
@@ -280,7 +280,7 @@ def get_logger(name: str) -> logging.Logger:
     Funcion de conveniencia para obtener un logger.
 
     Args:
-        name: Nombre del logger (típicamente __name__)
+        name: Nombre del logger (tipicamente __name__)
 
     Returns:
         logging.Logger: Logger configurado

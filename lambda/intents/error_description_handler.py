@@ -10,16 +10,17 @@ Patterns:
 - Chain of Responsibility: prueba extractores en secuencia
 """
 
+import re
 from abc import ABC, abstractmethod
 from typing import Optional
-import re
 
+from ask_sdk_model import Slot, Intent as AlexaIntent, Response
+from ask_sdk_model.intent import Intent
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_core.utils import is_request_type
-from ask_sdk_model import Response
-from ask_sdk_model.intent import Intent
 
 from intents.base import BaseIntentHandler
+from intents.diagnose_intent import DiagnoseIntentHandler
 
 
 # Strategy Pattern: Extractores de Texto de Error
@@ -307,9 +308,6 @@ class ErrorDescriptionHandler(BaseIntentHandler):
         Returns:
             Response del DiagnoseIntentHandler
         """
-        from intents.diagnose_intent import DiagnoseIntentHandler
-        from ask_sdk_model import Slot, Intent as AlexaIntent
-
         # Crear intent sintetico para DiagnoseIntent
         new_intent = AlexaIntent(
             name='DiagnoseIntent',

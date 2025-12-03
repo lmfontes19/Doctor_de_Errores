@@ -16,6 +16,8 @@ from models import (
     Diagnostic,
     UserProfile,
     DiagnosticSource,
+    OperatingSystem,
+    PackageManager
 )
 from .solution_extractors import SolutionExtractionStrategy
 
@@ -502,18 +504,40 @@ class ResponseFactory:
         Returns:
             Response de Alexa
         """
+        session_attr = handler_input.attributes_manager.session_attributes
+        user_profile = session_attr.get('user_profile')
+
+        profile_configured = False
+        if user_profile:
+
+            profile_configured = (
+                user_profile.get('os') != OperatingSystem.UNKNOWN.value or
+                user_profile.get(
+                    'package_manager') != PackageManager.UNKNOWN.value
+            )
+
+
         speak_output = (
             "Bienvenido al Doctor de Errores. "
             "Soy tu asistente para diagnosticar errores de Python. "
-            "Antes de comenzar, puedes configurar tu perfil diciendo, "
-            "por ejemplo: uso Windows y pip. "
-            "O puedes ir directamente a describir el error que estas teniendo."
         )
+
+        # Si no tiene perfil configurado, sugerir configurarlo
+        if not profile_configured:
+            speak_output += (
+                "Antes de comenzar, puedes configurar tu perfil diciendo, "
+                "por ejemplo: uso Windows y pip. "
+                "O puedes ir directamente a describir el error que estas teniendo."
+            )
+            reprompt = "¿Que sistema operativo y gestor de paquetes usas, o que error tienes?"
+        else:
+            speak_output += "¿Que error estas teniendo?"
+            reprompt = "¿Que error tienes?"
 
         return (
             handler_input.response_builder
             .speak(speak_output)
-            .ask("¿Que sistema operativo y gestor de paquetes usas, o que error tienes?")
+            .ask(reprompt)
             .response
         )
 

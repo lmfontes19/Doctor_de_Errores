@@ -5,7 +5,7 @@ Este modulo define las estructuras de datos principales usando dataclasses
 para proporcionar type safety y validacion.
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
@@ -16,7 +16,7 @@ class ErrorType(Enum):
     GENERIC_ERROR = "generic_error"
     UNKNOWN = "unknown"
 
-    # Errores de módulos e imports
+    # Errores de modulos e imports
     MODULE_NOT_FOUND = "py_module_not_found"
     PY_MODULE_NOT_FOUND = "py_module_not_found"  # Alias
 
@@ -27,7 +27,7 @@ class ErrorType(Enum):
     # Errores de tipos
     TYPE_ERROR = "py_type_error"
 
-    # Errores de indentación
+    # Errores de indentacion
     INDENTATION_ERROR = "py_indentation_error"
 
     # Errores de nombres
@@ -148,7 +148,7 @@ class UserProfile:
         os: Sistema operativo
         package_manager: Gestor de paquetes
         editor: Editor de codigo
-        is_configured: True si el usuario configuró su perfil, False si es default
+        is_configured: True si el usuario configuro su perfil, False si es default
     """
     os: OperatingSystem = OperatingSystem.LINUX
     package_manager: PackageManager = PackageManager.PIP
@@ -479,14 +479,14 @@ class ErrorValidation:
     ]
 
     VAGUE_PHRASES = [
-        'muy específico', 'muy especifico', 'muy raro', 'muy extraño',
+        'muy especifico', 'muy especifico', 'muy raro', 'muy extraño',
         'algo malo', 'algo raro', 'algo extraño',
         'no funciona', 'no sirve', 'no anda',
         'no compila', 'no corre', 'no ejecuta',
         'falla', 'problema', 'bug', 'issue',
-        'mi código', 'mi programa', 'mi script',
-        'mi aplicación', 'mi app',
-        'un error genérico', 'un error común',
+        'mi codigo', 'mi programa', 'mi script',
+        'mi aplicacion', 'mi app',
+        'un error generico', 'un error comun',
         'un error random', 'un error cualquiera'
     ]
 

@@ -12,7 +12,7 @@ Patterns:
 from typing import Optional
 from ask_sdk_model import Response
 from ask_sdk_model.ui import SimpleCard, StandardCard, Image
-from utils import get_logger
+from utils import get_logger, truncate_text
 
 
 class AlexaResponseBuilder:
@@ -260,8 +260,6 @@ class DiagnosticResponseBuilder:
         Returns:
             Self para encadenamiento
         """
-        from utils import truncate_text
-
         # Configurar voz
         voice_text = truncate_text(
             diagnostic.voice_text,
@@ -341,8 +339,6 @@ class DiagnosticResponseBuilder:
         Returns:
             Self para encadenamiento
         """
-        from utils import truncate_text
-
         # Voz simplificada
         voice_text = truncate_text(
             f"{error_type} ocurre porque: {explanation}",

@@ -25,6 +25,8 @@ from models import Diagnostic
 from utils import truncate_text, sanitize_ssml_text
 from core.response_builder import AlexaResponseBuilder
 
+from config.settings import MAX_VOICE_LENGTH
+
 
 class WhyIntentHandler(BaseIntentHandler):
     """
@@ -57,7 +59,6 @@ class WhyIntentHandler(BaseIntentHandler):
     @property
     def MAX_VOICE_LENGTH(self):
         """Obtiene longitud maxima de voz desde settings."""
-        from config.settings import MAX_VOICE_LENGTH
         return MAX_VOICE_LENGTH
 
     def __init__(self):

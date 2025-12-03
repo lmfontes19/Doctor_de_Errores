@@ -292,7 +292,7 @@ class UserContextInterceptor(AbstractRequestInterceptor):
                         "User profile loaded from DynamoDB",
                         extra={'user_id': user_id}
                     )
-                    # Cachear en sesión
+                    # Cachear en o
                     session_attrs['user_profile'] = profile.to_dict()
                 else:
                     self.logger.debug(
@@ -358,7 +358,7 @@ class SessionPersistenceInterceptor(AbstractResponseInterceptor):
         """
         session_attrs = handler_input.attributes_manager.session_attributes
 
-        # Si hay perfil de usuario y la sesión termina, persistir
+        # Si hay perfil de usuario y la o termina, persistir
         if 'user_profile' in session_attrs:
             should_persist = (
                 response and response.should_end_session

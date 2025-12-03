@@ -14,8 +14,17 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import boto3
+
 from models import UserProfile, Diagnostic, SessionState
 from utils import get_logger
+from config.settings import (
+    ENABLE_STORAGE,
+    DYNAMODB_TABLE_NAME,
+    AWS_REGION,
+    EXT_AWS_ACCESS_KEY_ID,
+    EXT_AWS_SECRET_ACCESS_KEY
+)
 
 
 class StorageError(Exception):
@@ -49,7 +58,6 @@ class StorageService:
         self._dynamodb = None
         self._table = None
 
-        from config.settings import DYNAMODB_TABLE_NAME
         self.table_name = DYNAMODB_TABLE_NAME
 
     def _get_table(self):
@@ -57,30 +65,21 @@ class StorageService:
         Obtiene referencia a tabla DynamoDB (lazy initialization).
 
         Soporta tanto credenciales IAM Role (self-hosted Lambda)
-        como credenciales explícitas (Alexa-hosted con DynamoDB externa).
+        como credenciales explicitas (Alexa-hosted con DynamoDB externa).
 
         Returns:
-            Tabla de DynamoDB o None si no está disponible
+            Tabla de DynamoDB o None si no esta disponible
         """
         if self._table is None:
             try:
-                import boto3
-                from config.settings import (
-                    ENABLE_STORAGE,
-                    DYNAMODB_TABLE_NAME,
-                    AWS_REGION,
-                    EXT_AWS_ACCESS_KEY_ID,
-                    EXT_AWS_SECRET_ACCESS_KEY
-                )
-
-                # Si storage está deshabilitado, no intentar conectar
+                # Si storage esta deshabilitado, no intentar conectar
                 if not ENABLE_STORAGE:
-                    self.logger.info("Storage deshabilitado por configuración")
+                    self.logger.info("Storage deshabilitado por configuracion")
                     return None
 
                 # Configurar cliente DynamoDB
                 if EXT_AWS_ACCESS_KEY_ID and EXT_AWS_SECRET_ACCESS_KEY:
-                    # Conexión con credenciales explícitas
+                    # Conexion con credenciales explicitas
                     self.logger.info(
                         "Using explicit AWS credentials for DynamoDB")
                     self._dynamodb = boto3.resource(
@@ -185,7 +184,7 @@ class StorageService:
 
             if not user_id:
                 self.logger.warning(
-                    "user_id vacío o None, ignorando lookup en Dynamo")
+                    "user_id vacio o None, ignorando lookup en Dynamo")
                 return None
 
             # Obtener item
@@ -497,7 +496,6 @@ class StorageService:
                 self.logger.warning("DynamoDB not available, skipping cache")
                 return False
 
-            from datetime import timedelta
             ttl = int((datetime.utcnow() + timedelta(days=30)).timestamp())
 
             # Item de cache
@@ -547,6 +545,10 @@ class StorageService:
             if table is None:
                 return None
 
+            self.logger.info(
+                f"Looking up AI diagnostic cache for hash: {error_hash[:16]}..."
+            )
+
             # Buscar en cache
             response = table.get_item(Key={'userId': f'CACHE#{error_hash}'})
 
@@ -562,7 +564,7 @@ class StorageService:
             if (cached_profile.get('os') != profile.os.value or
                     cached_profile.get('pm') != profile.package_manager.value):
                 self.logger.debug(
-                    f"Cache profile mismatch",
+                    "Cache profile mismatch",
                     extra={
                         'cached': cached_profile,
                         'current': {'os': profile.os.value, 'pm': profile.package_manager.value}
@@ -578,7 +580,7 @@ class StorageService:
                     ExpressionAttributeValues={':inc': 1}
                 )
             except Exception:
-                pass  # No critical
+                pass
 
             # Deserializar diagnostico
             diagnostic_data = self._deserialize_dynamodb(
@@ -617,7 +619,7 @@ class StorageService:
             'explanation': diagnostic.explanation,
             'common_causes': diagnostic.common_causes or [],
             'related_errors': diagnostic.related_errors or [],
-            'confidence': float(diagnostic.confidence),
+            'confidence': Decimal(str(diagnostic.confidence)),
             'source': diagnostic.source,
             'card_title': diagnostic.card_title,
             'card_text': diagnostic.card_text

@@ -25,8 +25,13 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 from ask_sdk_model.ui import SimpleCard
 
+from core.diagnostic_strategies import create_default_strategy_chain
+from core.factories import DiagnosticFactory
 from intents.base import BaseIntentHandler
-from models import UserProfile, OperatingSystem, PackageManager, Editor
+from models import UserProfile, OperatingSystem, PackageManager, Editor, ErrorType
+
+from utils import sanitize_ssml_text, truncate_text
+from config.settings import MAX_VOICE_LENGTH
 
 
 class SetProfileIntentHandler(BaseIntentHandler):
@@ -175,7 +180,7 @@ class SetProfileIntentHandler(BaseIntentHandler):
             }
         )
 
-        # Validar valores usando los métodos from_string de los Enums
+        # Validar valores usando los metodos from_string de los Enums
         so_value, so_valid = self._validate_os(
             so_slot) if so_slot else (None, True)
         pm_value, pm_valid = self._validate_pm(
@@ -388,8 +393,6 @@ class SetProfileIntentHandler(BaseIntentHandler):
         Returns:
             Diagnostic object
         """
-        from core.diagnostic_strategies import create_default_strategy_chain
-
         # Usar Strategy Pattern
         strategy_chain = create_default_strategy_chain()
         diagnostic = strategy_chain.search_diagnostic(error_text, profile)
@@ -397,8 +400,6 @@ class SetProfileIntentHandler(BaseIntentHandler):
         # Fallback si todas las estrategias fallan
         if not diagnostic:
             self.logger.warning("All strategies failed in profile setup flow")
-            from core.factories import DiagnosticFactory
-            from models import ErrorType
             diagnostic = DiagnosticFactory.create_error_diagnostic(
                 error_message="No se pudo diagnosticar el error",
                 error_type=ErrorType.GENERIC_ERROR.value
@@ -425,9 +426,6 @@ class SetProfileIntentHandler(BaseIntentHandler):
         Returns:
             Response combinada
         """
-        from utils import sanitize_ssml_text, truncate_text
-        from config.settings import MAX_VOICE_LENGTH
-
         profile_msg = f"Perfecto. Configure tu perfil para {profile.os.value} con {profile.package_manager.value}. "
 
         # Procesar mensaje de diagnostico

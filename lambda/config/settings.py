@@ -93,7 +93,7 @@ OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.2'))
 # ============================================================================
 
 # AWS Credentials (para Alexa-hosted con DynamoDB externa)
-# Si no se proporcionan, se usará IAM Role (self-hosted Lambda)
+# Si no se proporcionan, se usara IAM Role (self-hosted Lambda)
 EXT_AWS_ACCESS_KEY_ID = os.getenv('EXT_AWS_ACCESS_KEY_ID')
 EXT_AWS_SECRET_ACCESS_KEY = os.getenv('EXT_AWS_SECRET_ACCESS_KEY')
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
@@ -122,7 +122,7 @@ MAX_CARD_TITLE_LENGTH = 100
 # ============================================================================
 
 if IS_DEVELOPMENT:
-    # En desarrollo, usar logs más verbosos
+    # En desarrollo, usar logs mas verbosos
     LOG_LEVEL = 'DEBUG'
 
     # Usar mock AI por defecto en desarrollo

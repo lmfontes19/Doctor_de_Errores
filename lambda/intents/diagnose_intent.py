@@ -21,10 +21,14 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from intents.base import BaseIntentHandler, require_profile
-from models import Diagnostic, UserProfile, ErrorValidation
+from models import Diagnostic, UserProfile, ErrorValidation, ErrorType
 from utils import truncate_text, sanitize_ssml_text
+
 from core.response_builder import AlexaResponseBuilder
 from core.diagnostic_strategies import create_default_strategy_chain
+from core.factories import DiagnosticFactory
+
+from config.settings import MAX_VOICE_LENGTH, KB_CONFIDENCE_THRESHOLD, MAX_CARD_LENGTH
 
 
 class DiagnoseIntentHandler(BaseIntentHandler):
@@ -56,19 +60,16 @@ class DiagnoseIntentHandler(BaseIntentHandler):
     @property
     def MAX_VOICE_LENGTH(self):
         """Obtiene longitud maxima de voz desde settings."""
-        from config.settings import MAX_VOICE_LENGTH
         return MAX_VOICE_LENGTH
 
     @property
     def MAX_CARD_LENGTH(self):
         """Obtiene longitud maxima de card desde settings."""
-        from config.settings import MAX_CARD_LENGTH
         return MAX_CARD_LENGTH
 
     @property
     def CONFIDENCE_THRESHOLD(self):
         """Obtiene umbral de confianza desde settings."""
-        from config.settings import KB_CONFIDENCE_THRESHOLD
         return KB_CONFIDENCE_THRESHOLD
 
     def __init__(self):
@@ -183,9 +184,6 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Returns:
             Diagnostico generico
         """
-        from core.factories import DiagnosticFactory
-        from models import ErrorType
-
         return DiagnosticFactory.create_error_diagnostic(
             error_message="No se pudo diagnosticar el error especifico",
             error_type=ErrorType.GENERIC_ERROR.value
@@ -239,7 +237,7 @@ class DiagnoseIntentHandler(BaseIntentHandler):
             AlexaResponseBuilder(handler_input)
             .speak(voice_text)
             .simple_card(diagnostic.card_title, card_content)
-            .ask("¿Quieres saber más o necesitas ayuda con algo más?")
+            .ask("¿Quieres saber mas o necesitas ayuda con algo mas?")
             .build()
         )
 
@@ -251,7 +249,7 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Valida que el texto del error sea suficientemente descriptivo.
 
         Rechaza descripciones vagas como:
-        - "un error muy específico y raro"
+        - "un error muy especifico y raro"
         - "un error"
         - "algo malo"
         - "no funciona"
@@ -305,14 +303,14 @@ class DiagnoseIntentHandler(BaseIntentHandler):
 
     def _handle_vague_error(self, handler_input: HandlerInput, error_text: str) -> Response:
         """
-        Maneja descripciones de error vagas o poco útiles.
+        Maneja descripciones de error vagas o poco utiles.
 
         Args:
             handler_input: Input del request
             error_text: Texto vago proporcionado
 
         Returns:
-            Response solicitando más detalles
+            Response solicitando mas detalles
         """
         self.logger.info(
             "Vague error description provided",

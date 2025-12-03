@@ -10,7 +10,6 @@ Patterns:
 - Data Mapper: Mapeo entre objetos de dominio y almacenamiento
 """
 
-import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -21,12 +20,10 @@ from utils import get_logger
 
 class StorageError(Exception):
     """Excepcion base para errores de storage."""
-    pass
 
 
 class UserNotFoundError(StorageError):
     """Usuario no encontrado en storage."""
-    pass
 
 
 class StorageService:
@@ -51,11 +48,16 @@ class StorageService:
         self.logger = get_logger(self.__class__.__name__)
         self._dynamodb = None
         self._table = None
-        self.table_name = 'DoctorErrores_Users'  # Nombre de tabla por defecto
+
+        from config.settings import DYNAMODB_TABLE_NAME
+        self.table_name = DYNAMODB_TABLE_NAME
 
     def _get_table(self):
         """
         Obtiene referencia a tabla DynamoDB (lazy initialization).
+
+        Soporta tanto credenciales IAM Role (self-hosted Lambda)
+        como credenciales explícitas (Alexa-hosted con DynamoDB externa).
 
         Returns:
             Tabla de DynamoDB o None si no está disponible
@@ -63,17 +65,40 @@ class StorageService:
         if self._table is None:
             try:
                 import boto3
-                from config.settings import ENABLE_STORAGE
+                from config.settings import (
+                    ENABLE_STORAGE,
+                    DYNAMODB_TABLE_NAME,
+                    AWS_REGION,
+                    EXT_AWS_ACCESS_KEY_ID,
+                    EXT_AWS_SECRET_ACCESS_KEY
+                )
 
                 # Si storage está deshabilitado, no intentar conectar
                 if not ENABLE_STORAGE:
                     self.logger.info("Storage deshabilitado por configuración")
                     return None
 
-                self._dynamodb = boto3.resource('dynamodb')
-                self._table = self._dynamodb.Table(self.table_name)
+                # Configurar cliente DynamoDB
+                if EXT_AWS_ACCESS_KEY_ID and EXT_AWS_SECRET_ACCESS_KEY:
+                    # Conexión con credenciales explícitas
+                    self.logger.info(
+                        "Using explicit AWS credentials for DynamoDB")
+                    self._dynamodb = boto3.resource(
+                        'dynamodb',
+                        region_name=AWS_REGION,
+                        aws_access_key_id=EXT_AWS_ACCESS_KEY_ID,
+                        aws_secret_access_key=EXT_AWS_SECRET_ACCESS_KEY
+                    )
+                else:
+                    self.logger.info("Using IAM Role for DynamoDB")
+                    self._dynamodb = boto3.resource(
+                        'dynamodb', region_name=AWS_REGION)
+
+                # Usar nombre de tabla desde settings
+                self._table = self._dynamodb.Table(DYNAMODB_TABLE_NAME)
+
                 self.logger.info(
-                    f"Connected to DynamoDB table: {self.table_name}")
+                    f"Connected to DynamoDB table: {DYNAMODB_TABLE_NAME} in region: {AWS_REGION}")
             except Exception as e:
                 self.logger.warning(f"DynamoDB no disponible: {e}")
                 return None
@@ -155,18 +180,32 @@ class StorageService:
                 self.logger.warning("DynamoDB no disponible, retornando None")
                 return None
 
-            # Obtener item
-            response = table.get_item(Key={'userId': user_id})
+            self.logger.info(
+                f"get_user_profile called with user_id={user_id!r}")
 
-            if 'Item' not in response:
-                self.logger.info(f"No profile found for user: {user_id}")
+            if not user_id:
+                self.logger.warning(
+                    "user_id vacío o None, ignorando lookup en Dynamo")
                 return None
 
-            # Parsear perfil
-            item = response['Item']
-            profile_data = item.get('profile', {})
+            # Obtener item
+            response = table.get_item(Key={"userId": user_id})
 
-            # Convertir de DynamoDB (Decimal -> int/float)
+            if "Item" not in response:
+                # Usuario nuevo, retornar None para que se use perfil por defecto
+                self.logger.info(
+                    f"No profile found for user: {user_id}, will use default")
+                return None
+
+            # Parsear perfil existente
+            item = response["Item"]
+            profile_data = item.get("profile")
+
+            if not profile_data:
+                self.logger.warning(
+                    f"User item exists but has no profile: {user_id}")
+                return None
+
             profile_data = self._deserialize_dynamodb(profile_data)
 
             profile = UserProfile.from_dict(profile_data)
@@ -435,6 +474,132 @@ class StorageService:
             self.logger.error(f"Failed to get user statistics: {e}")
             return {}
 
+    def save_ai_diagnostic_cache(
+        self,
+        error_hash: str,
+        diagnostic: Diagnostic,
+        profile: 'UserProfile'
+    ) -> bool:
+        """
+        Guarda un diagnostico de IA en cache para reutilizacion.
+
+        Args:
+            error_hash: Hash unico del error (basado en texto normalizado)
+            diagnostic: Diagnostico completo generado por IA
+            profile: Perfil del usuario (para contexto)
+
+        Returns:
+            True si se guardo exitosamente
+        """
+        try:
+            table = self._get_table()
+            if table is None:
+                self.logger.warning("DynamoDB not available, skipping cache")
+                return False
+
+            from datetime import timedelta
+            ttl = int((datetime.utcnow() + timedelta(days=30)).timestamp())
+
+            # Item de cache
+            cache_item = {
+                # Usar prefijo para identificar caches
+                'userId': f'CACHE#{error_hash}',
+                'diagnostic': self._diagnostic_to_dict(diagnostic),
+                'profile_context': {
+                    'os': profile.os.value,
+                    'pm': profile.package_manager.value
+                },
+                'createdAt': datetime.utcnow().isoformat(),
+                'ttl': ttl,
+                'hit_count': 0
+            }
+
+            table.put_item(Item=cache_item)
+
+            self.logger.info(
+                "AI diagnostic cached",
+                extra={'error_hash': error_hash[:16], 'ttl_days': 30}
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to cache AI diagnostic: {e}", exc_info=True)
+            return False
+
+    def get_ai_diagnostic_cache(
+        self,
+        error_hash: str,
+        profile: 'UserProfile'
+    ) -> Optional[Diagnostic]:
+        """
+        Recupera un diagnostico de IA desde cache.
+
+        Args:
+            error_hash: Hash del error
+            profile: Perfil del usuario actual
+
+        Returns:
+            Diagnostic si existe en cache y es compatible, None en caso contrario
+        """
+        try:
+            table = self._get_table()
+            if table is None:
+                return None
+
+            # Buscar en cache
+            response = table.get_item(Key={'userId': f'CACHE#{error_hash}'})
+
+            if 'Item' not in response:
+                self.logger.debug(
+                    f"Cache miss for error_hash: {error_hash[:16]}")
+                return None
+
+            cache_item = response['Item']
+
+            # Verificar compatibilidad de perfil (OS y PM deben coincidir)
+            cached_profile = cache_item.get('profile_context', {})
+            if (cached_profile.get('os') != profile.os.value or
+                    cached_profile.get('pm') != profile.package_manager.value):
+                self.logger.debug(
+                    f"Cache profile mismatch",
+                    extra={
+                        'cached': cached_profile,
+                        'current': {'os': profile.os.value, 'pm': profile.package_manager.value}
+                    }
+                )
+                return None
+
+            # Incrementar hit counter
+            try:
+                table.update_item(
+                    Key={'userId': f'CACHE#{error_hash}'},
+                    UpdateExpression='SET hit_count = hit_count + :inc',
+                    ExpressionAttributeValues={':inc': 1}
+                )
+            except Exception:
+                pass  # No critical
+
+            # Deserializar diagnostico
+            diagnostic_data = self._deserialize_dynamodb(
+                cache_item['diagnostic'])
+            diagnostic = self._dict_to_diagnostic(diagnostic_data)
+
+            self.logger.info(
+                "Cache HIT for error",
+                extra={
+                    'error_hash': error_hash[:16],
+                    'hit_count': cache_item.get('hit_count', 0) + 1
+                }
+            )
+
+            return diagnostic
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to get cached diagnostic: {e}", exc_info=True)
+            return None
+
     def _diagnostic_to_dict(self, diagnostic: Diagnostic) -> Dict[str, Any]:
         """
         Convierte Diagnostic a diccionario para DynamoDB.
@@ -496,14 +661,15 @@ class StorageService:
         if isinstance(data, Decimal):
             if data % 1 == 0:
                 return int(data)
-            else:
-                return float(data)
-        elif isinstance(data, dict):
+            return float(data)
+
+        if isinstance(data, dict):
             return {k: self._deserialize_dynamodb(v) for k, v in data.items()}
-        elif isinstance(data, list):
+
+        if isinstance(data, list):
             return [self._deserialize_dynamodb(item) for item in data]
-        else:
-            return data
+
+        return data
 
 
 # Instancia singleton del servicio
@@ -550,3 +716,31 @@ def save_diagnostic_to_history(user_id: str, diagnostic: Diagnostic) -> bool:
         True si se guardo exitosamente
     """
     return storage_service.save_diagnostic_history(user_id, diagnostic)
+
+
+def get_error_hash(error_text: str) -> str:
+    """
+    Genera hash unico para un error normalizado.
+
+    Normaliza el texto del error (lowercase, sin espacios extra)
+    y genera un hash SHA-256 para usar como clave de cache.
+
+    Args:
+        error_text: Texto del error
+
+    Returns:
+        Hash hexadecimal del error
+    """
+    import hashlib
+    import re
+
+    # Normalizar texto
+    normalized = error_text.lower().strip()
+    # Remover espacios multiples
+    normalized = re.sub(r'\s+', ' ', normalized)
+    # Remover caracteres especiales pero mantener espacios
+    normalized = re.sub(r'[^a-z0-9\s]', '', normalized)
+
+    # Generar hash
+    hash_obj = hashlib.sha256(normalized.encode('utf-8'))
+    return hash_obj.hexdigest()

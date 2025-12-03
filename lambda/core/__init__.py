@@ -6,6 +6,7 @@ Este paquete contiene:
 - Builders para construccion fluida de respuestas
 - Interceptors para procesamiento transversal
 - Prototype registry para templates
+- Strategies para diagnosticos
 """
 
 from .factories import (
@@ -38,6 +39,15 @@ from .interceptors import (
     RECOMMENDED_RESPONSE_INTERCEPTORS
 )
 
+from .diagnostic_strategies import (
+    DiagnosticStrategy,
+    KnowledgeBaseStrategy,
+    CachedAIDiagnosticStrategy,
+    LiveAIDiagnosticStrategy,
+    DiagnosticStrategyChain,
+    create_default_strategy_chain
+)
+
 __all__ = [
     # Factories
     'DiagnosticFactory',
@@ -63,5 +73,13 @@ __all__ = [
 
     # Interceptors
     'RECOMMENDED_REQUEST_INTERCEPTORS',
-    'RECOMMENDED_RESPONSE_INTERCEPTORS'
+    'RECOMMENDED_RESPONSE_INTERCEPTORS',
+
+    # Strategies
+    'DiagnosticStrategy',
+    'KnowledgeBaseStrategy',
+    'CachedAIDiagnosticStrategy',
+    'LiveAIDiagnosticStrategy',
+    'DiagnosticStrategyChain',
+    'create_default_strategy_chain'
 ]

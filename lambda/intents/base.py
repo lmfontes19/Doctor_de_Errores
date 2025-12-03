@@ -9,9 +9,6 @@ Note:
 
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
-from datetime import datetime
-import time
-import functools
 
 # Importar LoggerManager desde utils centralizado
 from utils import get_logger_manager, get_logger
@@ -22,11 +19,10 @@ from ask_sdk_model import Response
 from ask_sdk_core.utils import is_intent_name, get_slot_value
 
 # Importaciones de modelos
-from models import UserProfile, Diagnostic, SessionState
+from models import UserProfile, Diagnostic
 
-# Importaciones locales (se crearan despues)
-# from core.response_builder import ResponseBuilder
-# from services.storage import StorageService
+# Importaciones de servicios
+from services.storage import storage_service
 
 
 # ============================================================================
@@ -56,16 +52,18 @@ def get_user_profile_from_session(handler_input: HandlerInput) -> UserProfile:
         logger.info("Profile loaded from session cache")
         return UserProfile.from_dict(profile_dict)
 
-    # TODO: Implementar carga desde DynamoDB cuando StorageService este listo
-    # user_id = handler_input.request_envelope.session.user.user_id
-    # storage_service = StorageService()
-    # profile_dict = storage_service.get_profile(user_id)
-    #
-    # if profile_dict:
-    #     profile = UserProfile.from_dict(profile_dict)
-    #     # Cachear en session
-    #     session_attr['user_profile'] = profile.to_dict()
-    #     return profile
+    # Intentar cargar desde DynamoDB
+    try:
+        user_id = handler_input.request_envelope.session.user.user_id
+        profile = storage_service.get_user_profile(user_id)
+
+        if profile:
+            logger.info("Profile loaded from DynamoDB")
+            # Cachear en session para requests subsecuentes
+            session_attr['user_profile'] = profile.to_dict()
+            return profile
+    except Exception as e:
+        logger.warning(f"Failed to load profile from DynamoDB: {e}")
 
     # Retornar perfil por defecto
     logger.info("Using default profile")
@@ -95,6 +93,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         # Usar el singleton LoggerManager desde utils
         self.logger_manager = get_logger_manager()
         self.logger = get_logger(self.__class__.__name__)
+        self.storage_service = storage_service
 
     @property
     @abstractmethod
@@ -328,7 +327,7 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         profile: UserProfile
     ) -> None:
         """
-        Guarda el perfil del usuario en session y storage.
+        Guarda el perfil del usuario en session y DynamoDB.
 
         Args:
             handler_input: Input del request
@@ -338,12 +337,26 @@ class BaseIntentHandler(AbstractRequestHandler, ABC):
         self.set_session_attribute(
             handler_input, 'user_profile', profile.to_dict())
 
-        # TODO: Guardar en DynamoDB cuando StorageService este listo
-        # user_id = self.get_user_id(handler_input)
-        # storage_service = StorageService()
-        # storage_service.save_profile(user_id, profile.to_dict())
+        # Guardar en DynamoDB (mejor esfuerzo)
+        try:
+            user_id = self.get_user_id(handler_input)
+            success = storage_service.save_user_profile(user_id, profile)
 
-        self.logger.info("Profile saved successfully")
+            if success:
+                self.logger.info(
+                    "Profile saved to DynamoDB",
+                    extra={'user_id': user_id}
+                )
+            else:
+                self.logger.warning(
+                    "DynamoDB not available, profile saved only in session",
+                    extra={'user_id': user_id}
+                )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to save profile to DynamoDB: {e}",
+                exc_info=True
+            )
 
     def _get_default_profile(self) -> UserProfile:
         """

@@ -11,11 +11,13 @@ import os
 from pathlib import Path
 from enum import Enum
 
+
 class AIProvider(Enum):
     """Providers de IA soportados."""
     BEDROCK = "bedrock"
     OPENAI = "openai"
     MOCK = "mock"  # Para testing
+
 
 # Cargar variables de entorno desde .env
 try:
@@ -61,7 +63,7 @@ KB_TEMPLATES_PATH = os.path.join(
     'kb_templates.json'
 )
 
-MAX_SOLUTIONS=5
+MAX_SOLUTIONS = 5
 
 # ============================================================================
 # CONFIGURACION DE AI SERVICE
@@ -90,9 +92,14 @@ OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.2'))
 # CONFIGURACION DE STORAGE (DYNAMODB)
 # ============================================================================
 
+# AWS Credentials (para Alexa-hosted con DynamoDB externa)
+# Si no se proporcionan, se usará IAM Role (self-hosted Lambda)
+EXT_AWS_ACCESS_KEY_ID = os.getenv('EXT_AWS_ACCESS_KEY_ID')
+EXT_AWS_SECRET_ACCESS_KEY = os.getenv('EXT_AWS_SECRET_ACCESS_KEY')
+AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
+
 # DynamoDB
 DYNAMODB_TABLE_NAME = os.getenv('DYNAMODB_TABLE', 'DoctorErrores_Users')
-DYNAMODB_REGION = os.getenv('DYNAMODB_REGION', 'us-east-1')
 DYNAMODB_ENDPOINT = os.getenv('DYNAMODB_ENDPOINT')  # Para testing local
 ENABLE_STORAGE = os.getenv('ENABLE_STORAGE', 'true').lower() == 'true'
 

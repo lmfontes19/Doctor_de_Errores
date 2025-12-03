@@ -22,6 +22,8 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
 from utils import get_logger
+from services.storage import storage_service
+from models import UserProfile
 
 
 class LoggingRequestInterceptor(AbstractRequestInterceptor):
@@ -280,13 +282,28 @@ class UserContextInterceptor(AbstractRequestInterceptor):
         if 'user_profile' in session_attrs:
             self.logger.debug("User profile found in session")
         else:
-            # TODO: Cargar de DynamoDB si existe
-            # user_id = handler_input.request_envelope.session.user.user_id
-            # profile = storage_service.get_user_profile(user_id)
-            # if profile:
-            #     session_attrs['user_profile'] = profile
+            # Cargar de DynamoDB si existe
+            try:
+                user_id = handler_input.request_envelope.session.user.user_id
+                profile = storage_service.get_user_profile(user_id)
 
-            self.logger.debug("No user profile in session")
+                if profile:
+                    self.logger.info(
+                        "User profile loaded from DynamoDB",
+                        extra={'user_id': user_id}
+                    )
+                    # Cachear en sesión
+                    session_attrs['user_profile'] = profile.to_dict()
+                else:
+                    self.logger.debug(
+                        "No user profile in DynamoDB",
+                        extra={'user_id': user_id}
+                    )
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to load user profile from DynamoDB: {e}",
+                    exc_info=True
+                )
 
 
 class LocalizationInterceptor(AbstractRequestInterceptor):
@@ -341,16 +358,37 @@ class SessionPersistenceInterceptor(AbstractResponseInterceptor):
         """
         session_attrs = handler_input.attributes_manager.session_attributes
 
-        # Si hay perfil de usuario, considerar persistir
+        # Si hay perfil de usuario y la sesión termina, persistir
         if 'user_profile' in session_attrs:
-            # TODO: Implementar persistencia en DynamoDB
-            # user_id = handler_input.request_envelope.session.user.user_id
-            # storage_service.save_user_profile(
-            #     user_id,
-            #     session_attrs['user_profile']
-            # )
+            should_persist = (
+                response and response.should_end_session
+            ) or session_attrs.get('profile_updated', False)
 
-            self.logger.debug("User profile persisted")
+            if should_persist:
+                try:
+                    user_id = handler_input.request_envelope.session.user.user_id
+                    profile_dict = session_attrs['user_profile']
+                    profile = UserProfile.from_dict(profile_dict)
+
+                    success = storage_service.save_user_profile(
+                        user_id, profile)
+
+                    if success:
+                        self.logger.info(
+                            "User profile persisted to DynamoDB",
+                            extra={'user_id': user_id}
+                        )
+                        session_attrs.pop('profile_updated', None)
+                    else:
+                        self.logger.warning(
+                            "DynamoDB not available, profile not persisted",
+                            extra={'user_id': user_id}
+                        )
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to persist user profile: {e}",
+                        exc_info=True
+                    )
 
 
 # Lista de interceptores recomendados para registro

@@ -28,9 +28,6 @@ from ask_sdk_model.ui import SimpleCard
 from intents.base import BaseIntentHandler
 from models import UserProfile, OperatingSystem, PackageManager, Editor
 
-# Importaciones que se crearan despues
-# from services.storage import StorageService
-
 
 class SetProfileIntentHandler(BaseIntentHandler):
     """
@@ -327,25 +324,16 @@ class SetProfileIntentHandler(BaseIntentHandler):
 
     def _persist_profile(self, handler_input: HandlerInput, profile: UserProfile) -> None:
         """
-        Persiste el perfil en sesion y opcionalmente en DynamoDB.
+        Persiste el perfil en sesion y DynamoDB.
 
-        Responsabilidad: Persistencia de datos del perfil.
+        Responsabilidad: Delega al metodo base que maneja toda la logica
+        de persistencia (sesion + DynamoDB con manejo de errores).
 
         Args:
             handler_input: Input del request
             profile: Perfil a persistir
         """
-        # Guardar en sesion (siempre)
         self.save_user_profile(handler_input, profile)
-
-        # TODO: Persistir en DynamoDB cuando StorageService este listo
-        # user_id = self.get_user_id(handler_input)
-        # self.storage_service.save_user_profile(user_id, profile.to_dict())
-
-        self.logger.info(
-            "Profile persisted",
-            extra={'profile': profile.to_dict()}
-        )
 
     def _handle_pending_diagnostic(
         self,
@@ -389,9 +377,9 @@ class SetProfileIntentHandler(BaseIntentHandler):
 
     def _generate_diagnostic(self, error_text: str, profile: UserProfile):
         """
-        Genera un diagnostico usando KB o AI.
+        Genera un diagnostico usando Strategy Pattern.
 
-        Responsabilidad: Delegacion a servicios de diagnostico.
+        Responsabilidad: Delegacion a cadena de estrategias de diagnostico.
 
         Args:
             error_text: Texto del error
@@ -400,18 +388,23 @@ class SetProfileIntentHandler(BaseIntentHandler):
         Returns:
             Diagnostic object
         """
-        from services.kb_service import kb_service
-        from services.ai_client import ai_service
-        from config.settings import KB_CONFIDENCE_THRESHOLD
+        from core.diagnostic_strategies import create_default_strategy_chain
 
-        kb_result = kb_service.search_diagnostic(error_text, profile)
+        # Usar Strategy Pattern
+        strategy_chain = create_default_strategy_chain()
+        diagnostic = strategy_chain.search_diagnostic(error_text, profile)
 
-        if kb_result and kb_result.confidence >= KB_CONFIDENCE_THRESHOLD:
-            self.logger.info("Using KB diagnostic")
-            return kb_result
+        # Fallback si todas las estrategias fallan
+        if not diagnostic:
+            self.logger.warning("All strategies failed in profile setup flow")
+            from core.factories import DiagnosticFactory
+            from models import ErrorType
+            diagnostic = DiagnosticFactory.create_error_diagnostic(
+                error_message="No se pudo diagnosticar el error",
+                error_type=ErrorType.GENERIC_ERROR.value
+            )
 
-        self.logger.info("Using AI diagnostic")
-        return ai_service.generate_diagnostic(error_text, profile)
+        return diagnostic
 
     def _build_profile_with_diagnostic_response(
         self,

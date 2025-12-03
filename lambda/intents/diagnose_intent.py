@@ -17,7 +17,6 @@ Patterns:
 - Builder (construccion de respuesta)
 """
 
-from typing import Optional
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model import Response
 
@@ -25,9 +24,7 @@ from intents.base import BaseIntentHandler, require_profile
 from models import Diagnostic, UserProfile, ErrorValidation
 from utils import truncate_text, sanitize_ssml_text
 from core.response_builder import AlexaResponseBuilder
-from services.kb_service import kb_service
-from services.ai_client import ai_service
-from services.storage import storage_service
+from core.diagnostic_strategies import create_default_strategy_chain
 
 
 class DiagnoseIntentHandler(BaseIntentHandler):
@@ -75,15 +72,14 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         return KB_CONFIDENCE_THRESHOLD
 
     def __init__(self):
-        """Inicializa el handler con servicios."""
+        """Inicializa el handler con cadena de estrategias."""
         super().__init__()
 
-        # Servicios de busqueda y almacenamiento
-        self.kb_service = kb_service
-        self.ai_service = ai_service
-        self.storage_service = storage_service
+        # Strategy Pattern: Cadena de estrategias de diagnostico
+        self.strategy_chain = create_default_strategy_chain()
 
-        self.logger.info("DiagnoseIntentHandler initialized")
+        self.logger.info(
+            "DiagnoseIntentHandler initialized")
 
     @property
     def intent_name(self) -> str:
@@ -148,9 +144,12 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         user_profile: UserProfile
     ) -> Diagnostic:
         """
-        Genera diagnostico usando KB o AI.
+        Genera diagnostico usando Strategy Pattern con Chain of Responsibility.
 
-        Strategy Pattern: Selecciona fuente segun disponibilidad y confianza.
+        Delega la busqueda a la cadena de estrategias que ejecuta:
+        1. KnowledgeBaseStrategy (rapido, gratis, preciso)
+        2. CachedAIDiagnosticStrategy (rapido, gratis, reutiliza)
+        3. LiveAIDiagnosticStrategy (lento, costoso, flexible + cache)
 
         Args:
             error_text: Texto del error
@@ -161,95 +160,18 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         self.logger.debug(f"Generating diagnostic for: {error_text[:30]}...")
 
-        # Fase 1: Buscar en Knowledge Base local
-        kb_result = self._search_knowledge_base(error_text, user_profile)
+        # Ejecutar cadena de estrategias
+        diagnostic = self.strategy_chain.search_diagnostic(
+            error_text,
+            user_profile
+        )
 
-        if kb_result and kb_result.confidence >= self.CONFIDENCE_THRESHOLD:
-            self.logger.info(
-                "KB match found",
-                extra={
-                    'confidence': kb_result.confidence,
-                    'error_type': kb_result.error_type
-                }
-            )
-            return kb_result
+        # Fallback si todas las estrategias fallan
+        if not diagnostic:
+            self.logger.warning("All strategies failed, using fallback")
+            diagnostic = self._create_fallback_diagnostic(user_profile)
 
-        # Fase 2: Fallback a AI
-        self.logger.info("KB confidence low, falling back to AI")
-        ai_result = self._query_ai_service(error_text, user_profile)
-
-        return ai_result
-
-    def _search_knowledge_base(
-        self,
-        error_text: str,
-        user_profile: UserProfile
-    ) -> Optional[Diagnostic]:
-        """
-        Busca el error en la Knowledge Base local.
-
-        Args:
-            error_text: Texto del error
-            user_profile: Perfil del usuario
-
-        Returns:
-            Diagnostico del KB o None si no hay match
-        """
-        self.logger.debug("Searching in Knowledge Base")
-
-        try:
-            # Buscar en KB usando el servicio
-            diagnostic = self.kb_service.search_diagnostic(
-                error_text, user_profile)
-
-            if diagnostic:
-                self.logger.info(
-                    f"KB match found: {diagnostic.error_type} "
-                    f"(confidence: {diagnostic.confidence:.2f})"
-                )
-
-            return diagnostic
-
-        except Exception as e:
-            self.logger.error(f"KB search failed: {e}", exc_info=True)
-            return None
-
-    def _query_ai_service(
-        self,
-        error_text: str,
-        user_profile: UserProfile
-    ) -> Diagnostic:
-        """
-        Consulta el servicio de AI (Bedrock o OpenAI).
-
-        Args:
-            error_text: Texto del error
-            user_profile: Perfil del usuario
-
-        Returns:
-            Diagnostico generado por AI
-        """
-        self.logger.debug("Querying AI service")
-
-        try:
-            # Generar diagnostico usando AI service
-            diagnostic = self.ai_service.generate_diagnostic(
-                error_text, user_profile)
-
-            if diagnostic:
-                self.logger.info(
-                    f"AI diagnostic generated: {diagnostic.error_type} "
-                    f"(source: {diagnostic.source})"
-                )
-                return diagnostic
-
-            # Fallback: diagnostico generico si AI falla
-            self.logger.warning("AI service returned None, using fallback")
-            return self._create_fallback_diagnostic(user_profile)
-
-        except Exception as e:
-            self.logger.error(f"AI service failed: {e}", exc_info=True)
-            return self._create_fallback_diagnostic(user_profile)
+        return diagnostic
 
     def _create_fallback_diagnostic(self, user_profile: UserProfile) -> Diagnostic:
         """
@@ -306,7 +228,8 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         )
 
         self.logger.info(f"Voice text to speak: '{voice_text[:100]}...'")
-        self.logger.info(f"Voice text length: {len(voice_text)} characters")
+        self.logger.info(
+            f"Voice text length: {len(voice_text)} characters")
 
         # Sanitizar card content tambien
         card_content = sanitize_ssml_text(diagnostic.card_text or "")

@@ -12,10 +12,10 @@ Patterns:
 """
 
 import json
-import boto3
 from typing import Optional, Dict, Any, List
 from abc import ABC, abstractmethod
-from openai import OpenAI
+
+import boto3
 
 from models import Diagnostic, UserProfile, ErrorType
 from core.factories import DiagnosticFactory
@@ -24,6 +24,16 @@ from config.settings import (
     BEDROCK_MAX_TOKENS, BEDROCK_TEMPERATURE, OPENAI_MAX_TOKENS,
     OPENAI_TEMPERATURE, OPENAI_API_KEY, OPENAI_MODEL
 )
+
+_openai_client = None
+try:
+    from openai import OpenAI
+    if OPENAI_API_KEY:
+        _openai_client = OpenAI(api_key=OPENAI_API_KEY,
+                                max_retries=0, timeout=2.5)
+except Exception:
+    _openai_client = None
+
 
 class AIClientError(Exception):
     """Excepcion base para errores de cliente AI."""
@@ -267,36 +277,13 @@ class OpenAIClient(BaseAIClient):
             model: Modelo a usar
         """
         super().__init__()
-        self.api_key = api_key
+        self.api_key = api_key or OPENAI_API_KEY
         self.model = model
-        self._client = None
-
-    def _get_client(self):
-        """Obtiene cliente de OpenAI (lazy initialization)."""
-        if self._client is None:
-            try:
-                if not self.api_key:
-                    raise AIProviderUnavailable(
-                        "OpenAI API key not configured")
-                self._client = OpenAI(api_key=self.api_key, max_retries=0, timeout=6)
-            except ImportError as e:
-                self.logger.error(f"OpenAI library not installed: {e}")
-                raise AIProviderUnavailable("OpenAI library not available")
-            except Exception as e:
-                self.logger.error(f"Failed to create OpenAI client: {e}")
-                raise AIProviderUnavailable("OpenAI not available")
-
-        return self._client
+        self._client = _openai_client
 
     def is_available(self) -> bool:
         """Verifica disponibilidad de OpenAI."""
-        try:
-            if not self.api_key:
-                return False
-            self._get_client()
-            return True
-        except Exception:
-            return False
+        return self._client is not None and self.api_key is not None
 
     def generate_diagnostic(
         self,
@@ -304,12 +291,14 @@ class OpenAIClient(BaseAIClient):
         user_profile: UserProfile
     ) -> Optional[Diagnostic]:
         """Genera diagnostico usando OpenAI."""
+        if self._client is None:
+            raise AIProviderUnavailable("OpenAI client not initialized")
+
         try:
-            client = self._get_client()
             prompt = self._build_prompt(error_text, user_profile)
 
             # Invocar modelo
-            response = client.chat.completions.create(
+            response = self._client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
@@ -464,8 +453,30 @@ class AIService:
         return available
 
 
-# Instancia por defecto del servicio
-ai_service = AIService()
+_ai_service_instance = None
+
+
+def get_ai_service() -> AIService:
+    """
+    Obtiene instancia singleton del servicio de IA (lazy initialization).
+
+    Returns:
+        AIService instance
+    """
+    global _ai_service_instance
+    if _ai_service_instance is None:
+        _ai_service_instance = AIService()
+    return _ai_service_instance
+
+
+class _AIServiceProxy:
+    """Proxy para acceso lazy al servicio de IA."""
+
+    def __getattr__(self, name):
+        return getattr(get_ai_service(), name)
+
+
+ai_service = _AIServiceProxy()
 
 
 # Funciones de conveniencia
@@ -483,4 +494,4 @@ def generate_ai_diagnostic(
     Returns:
         Diagnostic o None
     """
-    return ai_service.generate_diagnostic(error_text, user_profile)
+    return get_ai_service().generate_diagnostic(error_text, user_profile)

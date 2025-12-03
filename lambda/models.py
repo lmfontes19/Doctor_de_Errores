@@ -5,8 +5,10 @@ Este modulo define las estructuras de datos principales usando dataclasses
 para proporcionar type safety y validacion.
 """
 
+import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from enum import Enum
 
 
@@ -436,66 +438,443 @@ class SessionState:
 
 
 # ============================================================================
-# Error Validation Constants
+# Error Validation Rules
 # ============================================================================
+
+
+class ValidationResult:
+    """
+    Encapsula el resultado de una validacion.
+
+    Value Object pattern - inmutable y con semantica clara.
+    """
+
+    def __init__(self, is_valid: bool, message: Optional[str] = None, score: float = 0.0):
+        self._is_valid = is_valid
+        self._message = message
+        self._score = score
+
+    @property
+    def is_valid(self) -> bool:
+        return self._is_valid
+
+    @property
+    def message(self) -> Optional[str]:
+        return self._message
+
+    @property
+    def score(self) -> float:
+        return self._score
+
+    def __bool__(self) -> bool:
+        """Permite usar en contextos booleanos: if result: ..."""
+        return self._is_valid
+
+
+class ErrorPattern(ABC):
+    """
+    Interfaz para detectores de patrones de error.
+
+    Strategy Pattern - cada patron es una estrategia intercambiable.
+    Open/Closed Principle - abierto para extension, cerrado para modificacion.
+    """
+
+    @abstractmethod
+    def matches(self, text: str) -> bool:
+        """
+        Verifica si el texto coincide con este patron.
+
+        Args:
+            text: Texto a analizar
+
+        Returns:
+            True si coincide con el patron
+        """
+
+    @abstractmethod
+    def get_confidence(self) -> float:
+        """
+        Retorna el nivel de confianza que aporta este patron (0.0 - 1.0).
+
+        Returns:
+            Confianza del patron
+        """
+
+
+class PythonExceptionPattern(ErrorPattern):
+    """Detecta nombres de excepciones Python estandar (NombreError, NombreException)."""
+
+    def matches(self, text: str) -> bool:
+        # CamelCase terminando en Error o Exception
+        return bool(re.search(r'[A-Z][a-z]+(?:Error|Exception)', text))
+
+    def get_confidence(self) -> float:
+        return 0.3
+
+
+class NotFoundPattern(ErrorPattern):
+    """Detecta frases 'not found' comunes en errores."""
+
+    def matches(self, text: str) -> bool:
+        return bool(re.search(r'\bnot found\b', text, re.IGNORECASE))
+
+    def get_confidence(self) -> float:
+        return 0.2
+
+
+class CannotActionPattern(ErrorPattern):
+    """Detecta frases 'cannot do_something'."""
+
+    def matches(self, text: str) -> bool:
+        return bool(re.search(r'\bcannot \w+', text, re.IGNORECASE))
+
+    def get_confidence(self) -> float:
+        return 0.2
+
+
+class ModuleImportPattern(ErrorPattern):
+    """Detecta errores relacionados con imports/modulos."""
+
+    def matches(self, text: str) -> bool:
+        patterns = [
+            r'\bno module named\b',
+            r'\bimport\b',
+            r'\bmodule\b.*\berror\b'
+        ]
+        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+    def get_confidence(self) -> float:
+        return 0.25
+
+
+class SyntaxRelatedPattern(ErrorPattern):
+    """Detecta errores de sintaxis."""
+
+    def matches(self, text: str) -> bool:
+        patterns = [
+            r'\binvalid syntax\b',
+            r'\bsyntax error\b',
+            r'\bexpected.*but found\b'
+        ]
+        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+    def get_confidence(self) -> float:
+        return 0.25
+
+
+class AttributeAccessPattern(ErrorPattern):
+    """Detecta errores de atributos."""
+
+    def matches(self, text: str) -> bool:
+        patterns = [
+            r'\bhas no attribute\b',
+            r'\bnot defined\b',
+            r'\bundefined\b'
+        ]
+        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+    def get_confidence(self) -> float:
+        return 0.2
+
+
+class TechnicalNotationPattern(ErrorPattern):
+    """Detecta notacion tecnica (package.module, snake_case, etc.)."""
+
+    def matches(self, text: str) -> bool:
+        patterns = [
+            r'\w+\.\w+',           # package.module
+            r'[a-z]+_[a-z]+',      # snake_case
+            r'[a-z]+-[a-z]+',      # kebab-case
+            r'\w+\d+',             # con numeros
+        ]
+        return any(re.search(p, text.lower()) for p in patterns)
+
+    def get_confidence(self) -> float:
+        return 0.15
+
+
+class TracebackPattern(ErrorPattern):
+    """Detecta menciones de traceback o lineas de codigo."""
+
+    def matches(self, text: str) -> bool:
+        patterns = [
+            r'\btraceback\b',
+            r'\bline \d+\b',
+            r'\bfile ".*", line \d+\b'
+        ]
+        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+    def get_confidence(self) -> float:
+        return 0.2
+
+
+class ErrorPatternMatcher:
+    """
+    Coordina multiples patrones para determinar especificidad.
+
+    Composite Pattern - compone multiples estrategias.
+    Single Responsibility - solo se encarga de coordinar patrones.
+    """
+
+    def __init__(self, patterns: Optional[List[ErrorPattern]] = None):
+        """
+        Args:
+            patterns: Lista de patrones a usar. Si None, usa patrones por defecto.
+        """
+        self._patterns = patterns or self._get_default_patterns()
+
+    @staticmethod
+    def _get_default_patterns() -> List[ErrorPattern]:
+        """Factory Method - crea conjunto por defecto de patrones."""
+        return [
+            PythonExceptionPattern(),
+            NotFoundPattern(),
+            CannotActionPattern(),
+            ModuleImportPattern(),
+            SyntaxRelatedPattern(),
+            AttributeAccessPattern(),
+            TechnicalNotationPattern(),
+            TracebackPattern(),
+        ]
+
+    def has_specific_patterns(self, text: str) -> bool:
+        """
+        Verifica si el texto contiene patrones especificos.
+
+        Args:
+            text: Texto a analizar
+
+        Returns:
+            True si al menos un patron coincide
+        """
+        return any(pattern.matches(text) for pattern in self._patterns)
+
+    def calculate_confidence_score(self, text: str) -> float:
+        """
+        Calcula score de confianza basado en patrones encontrados.
+
+        Args:
+            text: Texto a analizar
+
+        Returns:
+            Score entre 0.0 y 1.0
+        """
+        score = 0.3
+
+        for pattern in self._patterns:
+            if pattern.matches(text):
+                score += pattern.get_confidence()
+
+        # Bonus por longitud
+        if len(text) > 30:
+            score += 0.15
+        elif len(text) > 15:
+            score += 0.05
+
+        return min(score, 1.0)
+
+
+class ValidationRule(ABC):
+    """
+    Interfaz para reglas de validacion.
+
+    Strategy Pattern - cada regla es una estrategia.
+    Interface Segregation - interfaz minima y especifica.
+    """
+
+    @abstractmethod
+    def validate(self, text: str) -> ValidationResult:
+        """
+        Valida el texto segun esta regla.
+
+        Args:
+            text: Texto a validar
+
+        Returns:
+            ValidationResult con el resultado
+        """
+
+
+class EmptyTextRule(ValidationRule):
+    """Regla: El texto no debe estar vacio."""
+
+    def validate(self, text: str) -> ValidationResult:
+        if not text or not text.strip():
+            return ValidationResult(
+                is_valid=False,
+                message="No recibi una descripcion del error. ¿Que error tienes?"
+            )
+        return ValidationResult(is_valid=True)
+
+
+class MinimumLengthRule(ValidationRule):
+    """Regla: El texto debe tener una longitud minima."""
+
+    def __init__(self, min_length: int = 5):
+        self._min_length = min_length
+
+    def validate(self, text: str) -> ValidationResult:
+        if len(text.strip()) < self._min_length:
+            return ValidationResult(
+                is_valid=False,
+                message="La descripcion es muy corta. ¿Puedes dar mas detalles del error?"
+            )
+        return ValidationResult(is_valid=True)
+
+
+class VaguePhraseRule(ValidationRule):
+    """Regla: El texto no debe ser exactamente una frase vaga conocida."""
+
+    VAGUE_PHRASES = {
+        'error', 'un error', '1 error',
+        'tengo error', 'hay error', 'problema',
+        'bug', 'falla', 'no funciona'
+    }
+
+    def validate(self, text: str) -> ValidationResult:
+        if text.lower().strip() in self.VAGUE_PHRASES:
+            return ValidationResult(
+                is_valid=False,
+                message="Necesito mas detalles. ¿Que tipo de error exactamente? Por ejemplo: module not found, syntax error, etcetera."
+            )
+        return ValidationResult(is_valid=True)
+
+
+class PatternBasedRule(ValidationRule):
+    """
+    Regla: El texto debe tener patrones tecnicos o longitud suficiente.
+
+    Dependency Inversion - depende de abstraccion (ErrorPatternMatcher).
+    """
+
+    def __init__(self, pattern_matcher: Optional[ErrorPatternMatcher] = None):
+        self._pattern_matcher = pattern_matcher or ErrorPatternMatcher()
+
+    def validate(self, text: str) -> ValidationResult:
+        text_clean = text.strip()
+
+        if self._pattern_matcher.has_specific_patterns(text_clean):
+            score = self._pattern_matcher.calculate_confidence_score(
+                text_clean)
+            return ValidationResult(is_valid=True, score=score)
+
+        if len(text_clean) >= 15:
+            return ValidationResult(is_valid=True, score=0.5)
+
+        if len(text_clean) < 10:
+            return ValidationResult(
+                is_valid=False,
+                message="¿Podrias ser mas especifico sobre el error? Por ejemplo, menciona el tipo de error o el mensaje que ves."
+            )
+
+        return ValidationResult(is_valid=True, score=0.4)
+
+
+class ErrorValidator:
+    """
+    Validador principal que coordina multiples reglas.
+
+    Chain of Responsibility Pattern - ejecuta reglas en cadena.
+    Single Responsibility - solo coordina reglas.
+    Open/Closed - agregar reglas sin modificar esta clase.
+    """
+
+    def __init__(self, rules: Optional[List[ValidationRule]] = None):
+        """
+        Args:
+            rules: Lista de reglas a aplicar. Si None, usa reglas por defecto.
+        """
+        self._rules = rules or self._get_default_rules()
+
+    @staticmethod
+    def _get_default_rules() -> List[ValidationRule]:
+        """Factory Method - crea conjunto por defecto de reglas."""
+        return [
+            EmptyTextRule(),
+            MinimumLengthRule(min_length=5),
+            VaguePhraseRule(),
+            PatternBasedRule(),
+        ]
+
+    def validate(self, text: str) -> ValidationResult:
+        """
+        Valida el texto aplicando todas las reglas en orden.
+
+        Args:
+            text: Descripcion del error a validar
+
+        Returns:
+            ValidationResult con el resultado de la primera regla que falle,
+            o ValidationResult valido si todas pasan.
+        """
+        for rule in self._rules:
+            result = rule.validate(text)
+            if not result.is_valid:
+                return result
+
+        # Todas las reglas pasaron - calcular score final
+        pattern_matcher = ErrorPatternMatcher()
+        score = pattern_matcher.calculate_confidence_score(text)
+        return ValidationResult(is_valid=True, score=score)
+
 
 class ErrorValidation:
     """
-    Constantes para validacion de descripciones de errores.
+    Facade para validacion de errores.
 
-    Centraliza las listas de keywords y frases vagas usadas para
-    validar que las descripciones de errores sean suficientemente
-    especificas antes de hacer peticiones a servicios externos (AI).
+    Facade Pattern - interfaz simplificada para el subsistema de validacion.
+    Mantiene compatibilidad con codigo existente.
     """
 
-    SPECIFIC_ERROR_KEYWORDS = [
-        'module not found', 'modulenotfounderror', 'importerror',
-        'syntax error', 'syntaxerror', 'invalid syntax',
-        'name error', 'nameerror', 'not defined',
-        'attribute error', 'attributeerror', 'has no attribute',
-        'type error', 'typeerror', 'wrong type',
-        'value error', 'valueerror',
-        'key error', 'keyerror',
-        'index error', 'indexerror', 'out of range',
-        'file not found', 'filenotfounderror',
-        'permission denied', 'permissionerror',
-        'indentation error', 'indentationerror',
-        'zero division', 'zerodivisionerror',
-        'recursion error', 'recursionerror',
-        'runtime error', 'runtimeerror',
-        'assertion error', 'assertionerror',
-        'keyboard interrupt', 'keyboardinterrupt',
-        'memory error', 'memoryerror',
-        'overflow error', 'overflowerror',
-        'unicode error', 'unicodeerror',
-        'os error', 'oserror',
-        'io error', 'ioerror',
-        'traceback',
-        # Common Python packages
-        'numpy', 'pandas', 'scipy', 'matplotlib', 'seaborn',
-        'flask', 'django', 'fastapi', 'requests', 'sqlalchemy',
-        'tensorflow', 'keras', 'pytorch', 'scikit-learn', 'sklearn',
-        'opencv', 'cv2', 'pillow', 'pil', 'beautifulsoup', 'bs4',
-    ]
+    _validator: Optional[ErrorValidator] = None
 
-    VAGUE_PHRASES = [
-        'muy especifico', 'muy especifico', 'muy raro', 'muy extraño',
-        'algo malo', 'algo raro', 'algo extraño',
-        'no funciona', 'no sirve', 'no anda',
-        'no compila', 'no corre', 'no ejecuta',
-        'falla', 'problema', 'bug', 'issue',
-        'mi codigo', 'mi programa', 'mi script',
-        'mi aplicacion', 'mi app',
-        'un error generico', 'un error comun',
-        'un error random', 'un error cualquiera'
-    ]
+    @classmethod
+    def _get_validator(cls) -> ErrorValidator:
+        """Lazy initialization del validador."""
+        if cls._validator is None:
+            cls._validator = ErrorValidator()
+        return cls._validator
 
-    TOO_VAGUE_EXACT = [
-        'error', 'un error', '1 error',
-        'tengo error', 'hay error'
-    ]
+    @classmethod
+    def is_specific_enough(cls, text: str) -> Tuple[bool, Optional[str]]:
+        """
+        Valida si la descripcion del error es suficientemente especifica.
 
-    MIN_LENGTH_WITHOUT_KEYWORDS = 15
+        Mantiene la interfaz original para compatibilidad.
+
+        Args:
+            text: Descripcion del error
+
+        Returns:
+            (is_valid, message_if_invalid)
+
+        Examples:
+            >>> ErrorValidation.is_specific_enough("error")
+            (False, "Necesito mas detalles...")
+
+            >>> ErrorValidation.is_specific_enough("numpy not found")
+            (True, None)
+        """
+        validator = cls._get_validator()
+        result = validator.validate(text)
+        return (result.is_valid, result.message)
+
+    @classmethod
+    def get_specificity_score(cls, text: str) -> float:
+        """
+        Calcula un score de especificidad de 0.0 (muy vago) a 1.0 (muy especifico).
+
+        util para logging y metricas.
+
+        Args:
+            text: Descripcion del error
+
+        Returns:
+            Score entre 0.0 y 1.0
+        """
+        validator = cls._get_validator()
+        result = validator.validate(text)
+        return result.score
 
 
 # Funciones de utilidad para backwards compatibility

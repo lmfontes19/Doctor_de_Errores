@@ -248,11 +248,18 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         """
         Valida que el texto del error sea suficientemente descriptivo.
 
-        Rechaza descripciones vagas como:
-        - "un error muy especifico y raro"
-        - "un error"
-        - "algo malo"
-        - "no funciona"
+        Usa el nuevo sistema de validacion basado en patrones que detecta:
+        - Excepciones de Python (NameError, ImportError, etc.)
+        - Frases "not found", "cannot do"
+        - Imports de modulos
+        - Errores de sintaxis
+        - Acceso a atributos
+        - Notacion tecnica (package.module, snake_case)
+        - Tracebacks
+
+        Rechaza solo descripciones EXTREMADAMENTE vagas:
+        - Textos muy cortos (< 5 chars)
+        - Frases exactas como "error", "no funciona", "ayuda"
 
         Args:
             error_text: Texto del error a validar
@@ -260,46 +267,14 @@ class DiagnoseIntentHandler(BaseIntentHandler):
         Returns:
             bool: True si el error es suficientemente descriptivo
         """
-        if not error_text or len(error_text.strip()) < 5:
-            return False
+        is_valid, message = ErrorValidation.is_specific_enough(error_text)
 
-        error_lower = error_text.lower().strip()
-
-        for vague in ErrorValidation.VAGUE_PHRASES:
-            if vague in error_lower:
-                has_very_specific = any(
-                    kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
-                )
-
-                if not has_very_specific:
-                    self.logger.warning(
-                        f"Vague error description rejected: {error_text[:50]}"
-                    )
-                    return False
-
-        if error_lower in ErrorValidation.TOO_VAGUE_EXACT:
-            return False
-
-        if len(error_text.strip()) < ErrorValidation.MIN_LENGTH_WITHOUT_KEYWORDS:
-            has_specific = any(
-                kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
-            )
-            if not has_specific:
-                self.logger.warning(
-                    f"Too short and not specific: {error_text[:50]}"
-                )
-                return False
-
-        has_specific = any(
-            kw in error_lower for kw in ErrorValidation.SPECIFIC_ERROR_KEYWORDS
-        )
-        if not has_specific:
+        if not is_valid:
             self.logger.warning(
-                f"No specific error keyword found: {error_text[:50]}"
+                f"Error description rejected: {error_text[:50]} - Reason: {message}"
             )
-            return False
 
-        return True
+        return is_valid
 
     def _handle_vague_error(self, handler_input: HandlerInput, error_text: str) -> Response:
         """

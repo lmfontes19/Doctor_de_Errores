@@ -181,6 +181,13 @@ class CachedAIDiagnosticStrategy(DiagnosticStrategy):
             )
 
             if diagnostic:
+                if diagnostic.confidence == 0.0 or diagnostic.source == 'unknown':
+                    self.logger.warning(
+                        "Cached diagnostic is invalid (error diagnostic), ignoring",
+                        extra={'error_hash': error_hash[:16]}
+                    )
+                    return None
+
                 self.logger.info(
                     f"Cache HIT: {diagnostic.error_type}",
                     extra={'error_hash': error_hash[:16]}
@@ -209,7 +216,7 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
 
     Prioridad: 3 (ultima)
     Ventajas: Puede diagnosticar cualquier error, flexible
-    Desventajas: Lento (~2s), costo por llamada, requiere internet
+    Desventajas: Lento (~2s), costo por llamada
 
     Esta estrategia tambien guarda el resultado en cache para futuros usos.
     """
@@ -270,12 +277,21 @@ class LiveAIDiagnosticStrategy(DiagnosticStrategy):
         """
         Guarda el diagnostico en cache (mejor esfuerzo).
 
+        NO cachea diagnosticos de error (confidence=0 o source=unknown)
+        para evitar que errores temporales se perpetuen en cache.
+
         Args:
             error_text: Texto del error
             diagnostic: Diagnostico a cachear
             user_profile: Perfil del usuario
         """
         try:
+            if diagnostic.confidence == 0.0 or diagnostic.source == 'unknown':
+                self.logger.info(
+                    "Skipping cache for error diagnostic (confidence=0 or source=unknown)"
+                )
+                return
+
             error_hash = get_error_hash(error_text)
 
             success = self.storage_service.save_ai_diagnostic_cache(

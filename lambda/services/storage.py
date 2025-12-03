@@ -599,10 +599,41 @@ class StorageService:
 
         except Exception as e:
             self.logger.error(
-                f"Failed to get cached diagnostic: {e}", exc_info=True)
+                f"Failed to get AI diagnostic cache: {e}", exc_info=True)
             return None
 
-    def _diagnostic_to_dict(self, diagnostic: Diagnostic) -> Dict[str, Any]:
+    def delete_ai_diagnostic_cache(self, error_hash: str) -> bool:
+        """
+        Elimina un diagnostico del cache.
+
+        Util para limpiar diagnosticos de error o diagnosticos invalidos
+        que se hayan guardado accidentalmente.
+
+        Args:
+            error_hash: Hash del error a eliminar
+
+        Returns:
+            True si se elimino exitosamente, False en caso contrario
+        """
+        try:
+            table = self._get_table()
+            if table is None:
+                return False
+
+            table.delete_item(Key={'userId': f'CACHE#{error_hash}'})
+
+            self.logger.info(
+                "Cache item deleted",
+                extra={'error_hash': error_hash[:16]}
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to delete cache item: {e}", exc_info=True)
+            return False
+
+    def _diagnostic_to_dict(self, diagnostic: Diagnostic) -> dict:
         """
         Convierte Diagnostic a diccionario para DynamoDB.
 

@@ -274,48 +274,6 @@ ENABLE_STORAGE=true                      # Habilitar DynamoDB
 
 ---
 
-## Mejoras Recientes (v2.0)
-
-### Strategy Pattern con Chain of Responsibility
-- Implementación de 3 estrategias de diagnóstico (KB → AI Cache → Live AI)
-- Ejecución secuencial hasta obtener resultado exitoso
-- ~60% KB hit rate, ~30% cache hit rate, ~10% live AI
-
-### AI Cache Inteligente en DynamoDB
-- Cache de diagnósticos de IA con TTL de 30 días
-- Validación de diagnósticos (no cachea si confidence=0 o source=unknown)
-- Incremento automático de contador de hits
-- Ahorro estimado: $0.001 + 2s de latencia por cache hit
-
-### Validación Basada en Patrones con SOLID
-- Reemplazo de listas estáticas (40+ keywords) por 8 ErrorPattern con regex
-- Implementación de 6 patrones de diseño (Strategy, Composite, Chain, Facade, Factory, Value Object)
-- Aplicación de todos los principios SOLID
-- Extensible sin modificar código existente
-
-### Lazy Initialization con Proxy Pattern
-- Solución a importación circular entre ai_client y core.factories
-- `_AIServiceProxy` que inicializa el servicio solo cuando se usa
-- Mantiene API backward compatible
-
-### Manejo Robusto de Errores en Cache
-- Script `clean_error_cache.py` para identificar y eliminar diagnósticos corruptos
-- Validación al recuperar cache (ignora diagnósticos de error)
-- Prevención de perpetuación de errores temporales
-
-### Compatibilidad Python 3.8 (AWS Lambda)
-- Migración de `tuple[...]` a `Tuple[...]` para type hints
-- Soporte completo para runtime Python 3.8
-
-### Métricas de Performance
-- **Latencia P50**: ~80ms (KB)
-- **Latencia P95**: ~150ms (KB + Cache)
-- **Latencia P99**: ~2.5s (Live AI)
-- **Costo estimado**: ~$10/mes para 10,000 usuarios activos
-- **Cache hit rate**: ~70% (KB 60% + AI Cache 30% de los 40% restantes)
-
----
-
 ## Testing
 
 Consulta [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) para:

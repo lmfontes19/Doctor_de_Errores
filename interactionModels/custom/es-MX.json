@@ -21,7 +21,9 @@
             "cómo te uso",
             "qué comandos tienes",
             "necesito ayuda",
-            "ayúdame"
+            "ayúdame",
+            "ayuda",
+            "no sé qué hacer"
           ]
         },
         {
@@ -149,7 +151,9 @@
             "envíalo a mi teléfono",
             "mándalo a la app",
             "envíame el resumen",
-            "mándame los pasos"
+            "mándame los pasos",
+            "mándame el resumen",
+            "envíame los pasos"
           ]
         },
         {
@@ -186,7 +190,9 @@
           "samples": [
             "repite",
             "vuelve a decirlo",
-            "repítelo otra vez"
+            "repítelo otra vez",
+            "repítelo",
+            "di eso otra vez"
           ]
         }
       ],

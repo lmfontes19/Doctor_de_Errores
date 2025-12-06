@@ -103,35 +103,68 @@ skill/
 
 ### Prerequisitos
 
-- Python 3.9+
-- AWS CLI configurado
-- ASK CLI (Alexa Skills Kit CLI)
-- Cuenta de desarrollador de Alexa
+- Cuenta de desarrollador de Alexa (https://developer.amazon.com/alexa)
+- Cuenta de AWS con permisos de DynamoDB
+- AWS CLI configurado (opcional, para gestión de recursos)
+- Python 3.8+
 
 ### Instalacion
 
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/lmfontes19/Doctor_de_Errores.git
-   cd Doctor_de_Errores/skill
-   ```
+1. **Crear la skill en Amazon Developer Console**
+   - Ve a https://developer.amazon.com/alexa/console/ask
+   - Crea una nueva skill personalizada con backend "Alexa-Hosted (Python)"
+   - Importa el código desde este repositorio
 
-2. **Instalar dependencias**
-   ```bash
-   cd lambda
-   pip install -r requirements.txt
-   ```
+2. **Configurar DynamoDB**
+   - Crea una tabla en AWS DynamoDB llamada `DoctorErrores_Users`
+   - Clave de partición: `userId` (String)
+   - Configurar TTL en el atributo `ttl` (opcional, para cache)
 
-3. **Configurar variables de entorno**
-   ```bash
-   cp .env.example .env
-   # Editar .env con tus credenciales
+3. **Configurar permisos IAM**
+   
+   Crea un usuario IAM o rol con la siguiente política para acceso a DynamoDB:
+   
+   ```json
+   {
+       "Version": "2012-10-17",
+       "Statement": [
+           {
+               "Sid": "DoctorErroresDynamoDBAccess",
+               "Effect": "Allow",
+               "Action": [
+                   "dynamodb:PutItem",
+                   "dynamodb:GetItem",
+                   "dynamodb:UpdateItem",
+                   "dynamodb:Query",
+                   "dynamodb:Scan",
+                   "dynamodb:DescribeTable"
+               ],
+               "Resource": "arn:aws:dynamodb:us-east-1:575734508443:table/DoctorErrores_Users"
+           }
+       ]
+   }
    ```
+   
+   **Nota**: Reemplaza el ARN con el de tu tabla DynamoDB.
 
-4. **Desplegar la skill**
-   ```bash
-   ask deploy
-   ```
+4. **Configurar variables de entorno**
+   
+   En el IDE de Amazon Developer Console (pestaña "Code" de Alexa-Hosted):
+   - Crea un archivo `.env` en la raíz del proyecto Lambda
+   - Configura las siguientes variables (ver sección de Configuración más abajo):
+     - `AWS_REGION`: `us-east-1`
+     - `DYNAMODB_TABLE_NAME`: `DoctorErrores_Users`
+     - `OPENAI_API_KEY`: Tu clave de OpenAI (requerido para diagnósticos con IA)
+     - `OPENAI_MODEL`: `gpt-4o-mini` (opcional)
+
+5. **Configurar el modelo de interacción**
+   - En la consola de Alexa Developer, ve a "Build" > "Interaction Model"
+   - Importa el contenido de `interactionModels/custom/es-MX.json`
+   - Guarda y construye el modelo
+
+6. **Desplegar y probar**
+   - Despliega la skill desde la consola
+   - Usa el simulador de Alexa para probar: "Alexa, abre Doctor de Errores"
 
 ### Uso
 
@@ -141,6 +174,8 @@ skill/
 4. Pide mas detalles: *"Dame otra opcion"*
 5. Explora causas: *"Por que pasa esto?"*
 6. Recibe los pasos en tu app: *"Envialo a mi telefono"*
+
+**Nota sobre acentos**: Alexa puede ser sensible a los acentos en algunas frases. Si una frase con acento no es reconocida (ej: "explícame más"), intenta la versión sin acento ("explicame mas").
 
 ---
 
@@ -249,7 +284,7 @@ Las respuestas de IA son:
 
 ### Variables de Entorno
 
-Crea un archivo `.env` basado en `.env.example`:
+Configura las siguientes variables de entorno en archivo .env dentro del IDE de Developers Amazon:
 
 ```env
 # AWS
@@ -258,19 +293,46 @@ DYNAMODB_TABLE_NAME=DoctorErrores_Users
 
 # AI Services
 OPENAI_API_KEY=sk-...                    # Requerido para IA en vivo
-OPENAI_MODEL=gpt-4o-mini                 # Modelo de OpenAI
-BEDROCK_MODEL_ID=anthropic.claude-v2     # Opcional (alternativo)
+OPENAI_MODEL=gpt-4o-mini                 # Modelo de OpenAI (opcional)
+BEDROCK_MODEL_ID=anthropic.claude-v2     # Opcional (alternativo a OpenAI)
 
 # Knowledge Base
 KB_CONFIDENCE_THRESHOLD=0.75             # Umbral para aceptar match de KB
 
-# Response Settings
+# Response Setting
 MAX_VOICE_LENGTH=300                     # Máximo caracteres para voz
 MAX_CARD_LENGTH=1000                     # Máximo caracteres para card
 
-# Storage
+# Storage (Opcional)
 ENABLE_STORAGE=true                      # Habilitar DynamoDB
 ```
+
+### Permisos IAM Requeridos
+
+La función Lambda debe tener permisos para acceder a DynamoDB. Adjunta la siguiente política IAM al rol de ejecución de Lambda:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DoctorErroresDynamoDBAccess",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:DescribeTable"
+            ],
+            "Resource": "arn:aws:dynamodb:us-east-1:575734508443:table/DoctorErrores_Users"
+        }
+    ]
+}
+```
+
+**Nota**: Reemplaza el ARN con el de tu tabla DynamoDB específica.
 
 ---
 
